@@ -2,8 +2,8 @@ import numpy as np
 from numpy import linalg, sqrt, e
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-from scipy.fftpack import ifft
-from typing import Union, List
+from scipy.fftpack import ifft, fft
+from typing import Union, List, Tuple
 from mne.time_frequency import tfr, morlet
 
 
@@ -51,7 +51,6 @@ class Morse:
         self.b: float = b
         self.length: float = length
         self.accuracy: float = accuracy
-        self.a: float = 2 * (e * self.r / self.b) ** (self.b / self.r)
         self.sfreq: float = sfreq
         self._setup_peak()
 
@@ -91,6 +90,24 @@ class Morse:
         self.r = r
         self._setup_peak()
         return self
+
+    def _setup_waveshape(self, freq: float) -> Tuple[float, float]:
+        '''
+        Set gamma value of MorseWavelet.
+        Good value may be 3.
+
+        Parameters
+        ----------
+        freq: float | Frequency
+
+        Returns
+        -------
+        Tuple[float, float]: (one, total)
+        '''
+
+        one = 1 / freq / self.accuracy
+        total = self.sfreq / freq
+        return one, total
 
     def wavelet(self, freq: float = 10) -> np.ndarray:
         '''
@@ -133,17 +150,41 @@ class Morse:
         -------
         MorseWavelet: np.ndarray
         '''
-        return list(map(self.wavelet, freqs))
+        return map(self.wavelet, freqs)
+
+    def fft_wave(self, total: float, one: float,
+                 freq: float = 1) -> np.ndarray:
+        '''
+        Make Fourier transformed morse wavelet.
+        '''
+        self.a: float = 2 * (e * self.r / self.b) ** (self.b / self.r)
+        w: np.ndarray = np.arange(0, total, one)
+        step: np.ndarray = np.heaviside(w, w)
+        wave: np.ndarray = (step * self.a * (w / freq) ** self.b *
+                            e ** (
+                                (self.b / self.r) *
+                                (1 - (w / freq) ** self.r)
+                            )
+                            )
+        return wave
+
+    def fft_waves(self, total: float, one: float,
+                  freqs: List[float]) -> np.ndarray:
+        '''
+        Make Fourier transformed morse wavelet.
+        '''
+        return map(lambda freq: self.fft_wave(total, one, freq),
+                   freqs)
 
     def _ifft(self, total: float, one: float, freq: float) -> np.ndarray:
         '''
         Private method to make morse_wavelet.
+        It makes wavelet, to use mne.time_frequency.tfr.cwt.
+        But it is not good to perform both of IFFT and FFT.
+        Because, wave form changes.
+        I am going to write method not to use mne.
         '''
-        w: np.ndarray = np.arange(0, total, one)
-        step: np.ndarray = np.heaviside(w, w)
-        wave: np.ndarray = (step * self.a * w ** self.b *
-                            e ** ((self.b / self.r) * (1 - w ** self.r))
-                            )
+        wave = self.fft_wave(total, one)
         morse_wavelet: np.ndarray = ifft(wave)
         half = int(morse_wavelet.shape[0])
         band = int(half / 2 / freq * self.length)
@@ -157,26 +198,13 @@ class Morse:
         return morse_wavelet
 
     def cwt(self, wave: np.ndarray,
-            freqs: Union[List[float], range, np.ndarray], use_fft: bool = True,
-            mode: str = 'same', decim: float = 1) -> np.ndarray:
-        '''
-        Run cwt of mne-python.
-
-        Parameters
-        ----------
-        freqs: float | Frequencies. Before use this, please run plot.
-
-        Returns
-        -------
-        Result of cwt. Complex np.ndarray.
-        '''
-        return tfr.cwt(wave, self.wavelets(range(1, 100)), use_fft=use_fft,
-                       mode=mode, decim=decim).mean(axis=0)
+            freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
+        pass
 
     def power(self, wave: np.ndarray,
               freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
         '''
-        Run cwt of mne-python, and compute power.
+        Run cwt and compute power.
 
         Parameters
         ----------
@@ -204,10 +232,15 @@ class Morse:
         ax.set_title('Generalized Morse Wavelet')
         ax2 = fig.add_subplot(313)
         ax2.set_title('Caution')
-        ax2.text(0.05, 0.5, 'If wave continues to side of the window,'
-                 'wave is bad.\n'
+        ax2.text(0.05, 0.1,
+                 'This is inverse Fourier transformed MorseWavelet.\n'
+                 'Originally, Morse wavelet is Frourier transformed wave.\n'
+                 'It should be used as it is Fourier transformed data.\n'
+                 'But, you can use it in the same way as'
+                 'MorletWavelet by IFFT.\n'
+                 'If wave continues to side of the window, wave is bad.\n'
                  'Please set larger value to param "accuracy" and "length"\n'
-                 'It become bad easily when frequency is low.')
+                 'It becomes bad easily when frequency is low.')
         ax2.tick_params(labelbottom=False,
                         labelleft=False,
                         labelright=False,
@@ -218,8 +251,35 @@ class Morse:
         fig
 
 
+class MorseMNE(Morse):
+    '''
+    MorseWavelets for mne
+    '''
+    def cwt(self, wave: np.ndarray,
+            freqs: Union[List[float], range, np.ndarray],
+            use_fft: bool = True, mode: str = 'same',
+            decim: float = 1) -> np.ndarray:
+        '''
+        Run cwt of mne-python.
+        Because of use of IFFT before FFT to the same wave,
+        this ugly method is disgusting.
+
+        Parameters
+        ----------
+        freqs: float | Frequencies. Before use this, please run plot.
+
+        Returns
+        -------
+        Result of cwt. Complex np.ndarray.
+        '''
+        return tfr.cwt(wave,
+                       list(self.wavelets(range(1, 100))),
+                       use_fft=use_fft,
+                       mode=mode, decim=decim).mean(axis=0)
+
+
 def test() -> None:
-    morse = Morse(1000).beta(20)
+    morse = MorseMNE(1000).beta(20)
     freq = 60
     time = np.arange(0, 0.3, 0.001)
     sin = np.array([np.sin(time * freq * 2 * np.pi)])
@@ -233,7 +293,7 @@ def test() -> None:
 def test3d() -> None:
     go = morlet(1000, [10])[0]
     mm = morlet(1000, [10], zero_mean=True)[0]
-    morse = Morse(1000, 17.5, 3).wavelet(10)
+    morse = MorseMNE(1000, 17.5, 3).wavelet(10)
     fig = plt.figure()
     ax = fig.add_subplot(211)
     half_morse = morse.shape[0] / 2
