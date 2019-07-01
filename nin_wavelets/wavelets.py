@@ -33,14 +33,16 @@ class Morse:
         b: float | beta value
         r: float | gamma value. 3 may be good value.
         accuracy: float | Accurancy paramater.
+            It does not make sence when you use fft only.
             Because, Morse Wavelet needs Inverse Fourier Transform,
-            length of wavelet changes but it's tiring to detect. :(
-            Low frequency causes bad wave.
+            length of wavelet changes but it is tiring to detect. :(
+            If you use ifft, low frequency causes bad wave.
             Please check wave by Morse.plot(freq) before use it.
             If wave is bad, large accuracy can help you.(But needs cpu power)
-        length: float | Length paramater.
+        length: float | Length of wavelet.
+            It does not make sence when you use fft only.
             Too long wavelet causes slow calculation.
-            This param is cutting threshould of wave.
+            This param is cutting threshould of wavelets.
             Peak wave * length is the length of wavelet.
 
         Returns
@@ -112,13 +114,13 @@ class Morse:
         Tuple[float, float]: (one, total)
         '''
 
-        one = 1 / freq / self.accuracy
-        total = self.sfreq / freq
+        one: float = 1 / freq / self.accuracy
+        total: float = self.sfreq / freq
         return one, total
 
     def make_wavelets(self,
                       freqs: Union[List[float],
-                                   range, np.ndarray]) -> np.ndarray:
+                                   range, np.ndarray]) -> List[np.ndarray]:
         '''
         Make morse wavelet.
         It returnes list of wavelet, and it is compatible with mne-python.
@@ -138,10 +140,15 @@ class Morse:
         '''
         return list(map(self._ifft, freqs))
 
-    def make_fft_wave(self, total: float, one: float,
-                      freq: float = 1) -> np.ndarray:
+    def _make_fft_wave(self, total: float, one: float,
+                       freq: float = 1) -> np.ndarray:
         '''
         Make Fourier transformed morse wavelet.
+
+        Parameters
+        ----------
+        total: float | Length of wavelet.
+        one: float | Sampling scale.
         '''
         self.a: float = 2 * (e * self.r / self.b) ** (self.b / self.r)
         w: np.ndarray = np.arange(0, total, one)
@@ -159,7 +166,7 @@ class Morse:
         '''
         Make Fourier transformed morse wavelet.
         '''
-        return map(lambda freq: self.make_fft_wave(total, one, freq),
+        return map(lambda freq: self._make_fft_wave(total, one, freq),
                    freqs)
 
     def _ifft(self, freq: float) -> np.ndarray:
@@ -171,7 +178,7 @@ class Morse:
         Plot may be useful, so this method will not be discarded.
         '''
         one, total = self._setup_base_waveshape(freq)
-        wave = self.make_fft_wave(total, one)
+        wave = self._make_fft_wave(total, one)
         morse_wavelet: np.ndarray = ifft(wave)
         half = int(morse_wavelet.shape[0])
         band = int(half / 2 / freq * self.length)

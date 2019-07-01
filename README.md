@@ -1,6 +1,8 @@
 # NinWavelets
 This is a python script to generate 'Generalized Morse Wavelets'.
 It was written for mne python.
+It is brand new project, and under heavily development.
+Destructive changes may be made.
 
 # Install
 ```
@@ -8,10 +10,15 @@ pip install git+https://github.com/uesseu/nin_wavelets
 ```
 
 # Dependency
-Of cource, it depends on python, too.
-mne python is needed.
+- Scipy
+- numpy
+
+Optional
+- mne
 
 ```
+pip install scipy
+pip install numpy
 pip install mne
 ```
 
@@ -19,7 +26,7 @@ pip install mne
 It is similar to morlet wavelet, if you use default param.
 
 ```
-morse = Morse(1000).beta(20)
+morse = Morse(1000, gamma=3, beta=17.5)
 freq = 60
 time = np.arange(0, 0.3, 0.001)
 sin = np.array([np.sin(time * freq * 2 * np.pi)])
@@ -34,117 +41,105 @@ plt.show()
 
 - Other wavelets
     + Morlet
-    + Gover
+    + Gabor
     + Mexican hat
     + Haar
     + etc...
-- CWT without mne
+- DWT
 - Use cuda, cython and speedup!
+- Kill typos(I am not good at English)
 
 # Reference
-## Classes
-### Morse
-Morse(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
-             length: float = 10, accuracy: float = 1) -> None:
-Example.
->>> morse = Morse(1000).beta(20)
->>> freq = 60
->>> time = np.arange(0, 0.3, 0.001)
->>> sin = np.array([np.sin(time * freq * 2 * np.pi)])
->>> result = morse.power(sin, range(1, 100))
->>> plt.imshow(result, cmap='RdBu_r')
->>> plt.gca().invert_yaxis()
->>> plt.title('CWT of 60Hz sin wave')
->>> plt.show()
+## Morse Class
+It is a class to generate morse wavelets.
+
+```python
+Morse(self, sfreq: float = 1000,
+      b: float = 17.5, r: float = 3,
+      length: float = 10, accuracy: float = 1) -> None:
+```
 
 Parameters
-sfreq: float | Sampling frequency.
-    This behaves like sfreq of mne-python.
-b: float | beta value
-r: float | gamma value. 3 may be good value.
-accuracy: float | Accurancy paramater.
-    Because, Morse Wavelet needs Fourier Transform,
-    length of wavelet changes but it's tiring to detect. :(
-    Low frequency causes bad wave.
-    Please check wave by Morse.plot(freq) before use it.
-    If wave is bad, large accuracy can help you.(But needs cpu power)
-length: float | Length paramater.
-    Too long wavelet causes slow calculation.
-    This param is cutting threshould of wave.
-    Peak wave * length is the length of wavelet.
 
-Returns
-    Morse instance its self.
+- sfreq: float | Sampling frequency. This behaves like sfreq of mne-python.
+- b: float | beta value
+- r: float | gamma value. 3 may be good value.
+- accuracy: float | Accurancy paramater.
+- length: float | Length paramater.
 
-## Morse method
-### beta
-beta(self, b: float) -> 'Morse':
-Set gamma value of MorseWavelet.
-If it is 17.5, MorseWavelets may resembles MorseWavelet with sigma 7.
+Accuracy and length is optional.
+These are needed when you want to plot.
 
-Parameters
-r: float | gamma value
+Beta and gamma can be set by anothor methods.
+Beta and gamma is chainable.
 
-Returns
-Morse instance its self.
+```python
+morse = Morse()
+morse.beta(17.5).gamma(3)
+```
 
-### gamma
-gamma(self, r: float) -> 'Morse':
+## MorseMNE Class
+It is same as Morse class.
+But it uses mne.time_frequency.tfr.cwt to run cwt.
+It is not recommended, because mne.time_frequency.tfr.cwt needs wavelet
+which is not Fourier transformed.
+Basically, GeneralizedMorseWavelets is a wavelet which is
+'Fourier transformed wavelet' and so, you need to run
+InverseFourier transform before you perform CWT.
 
-Set gamma value of MorseWavelet.
-Good value may be 3.
 
-Parameters
-r: float | gamma value
+### make_wavelets
+```python
+wavelet = Morse(1000, 17.5, 3).make_wavelets([10])[0]
+```
 
-Returns
-Morse instance its self.
-
-### wavelet
-wavelet(self, freq: float = 10) -> np.ndarray:
-
-Make morse wavelet.
-It returnes one freq wavelet only, and so it may be useless.
+Make morse wavelets.
 
 Parameters
 freq: float | Frequency. If frequency is too small,
-    it returnes bad wave easily.
-    For example, sfreq=1000, freq=3 it returnes bad wave.
-    If you want good wave, you must set large accuracy, and length
-    when you make this instance.
+It returnes bad wave easily.
+For example, sfreq=1000, freq=3 it returnes bad wave.
+If you want good wave, you must set large accuracy,
+and length when you make this instance.
 
 Returns
 MorseWavelet: np.ndarray
 
-### wavelets
-wavelets(self, freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
-
-Make morse wavelet.
-It returnes list of wavelet, and it is compatible with mne-python.
-(As argument of Ws of mne.time_frequency.tfr.cwt)
-
-Parameters
-freqs: List[float] | Frequency. If frequency is too small,
-    it returnes bad wave easily.
-    For example, sfreq=1000, freq=3 it returnes bad wave.
-    If you want good wave, you must set large accuracy, and length
-    when you make this instance.
-
-Returns
-MorseWavelet: np.ndarray
+### make_fft_waves
+```
+def make_fft_waves(self, total: float, one: float,
+                   freqs: Iterable) -> Iterator:
+```
+Make Fourier transformed morse wavelet.
 
 ### cwt
+#### Morse class
+cwt method of Morse class.
+
+```python
+def cwt(self, wave: np.ndarray,
+        freqs: Union[List[float], range, np.ndarray],
+        max_freq: int = 0) -> np.ndarray:
+```
+
+example
+```python
+morse = Morse()
+result = morse.cwt(sin, np.arange(1, 1000, 1))
+plt.imshow(np.abs(result), cmap='RdBu_r')
+plt.show()
+```
+
+max_freq is a param to cut result.
+
+#### MorseMNE class
+Same as mne.
+
+```python
 cwt(self, wave: np.ndarray,
     freqs: Union[List[float], range, np.ndarray], use_fft: bool = True,
     mode: str = 'same', decim: float = 1) -> np.ndarray:
-
-Run cwt of mne-python.
-
-Parameters
-freqs: float | Frequencies. Before use this, please run plot.
-
-Returns
-Result of cwt. Complex np.ndarray.
+```
 
 ### power
 power(self, wave: np.ndarray,

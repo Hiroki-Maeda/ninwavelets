@@ -83,10 +83,13 @@ def cwt_test() -> None:
     result = morse.cwt(sin, np.arange(1, 1000, 1))
     plt.imshow(np.abs(result), cmap='RdBu_r')
     plt.show()
+    result = morse.power(sin, np.arange(1, 1000, 1))
+    plt.imshow(np.abs(result), cmap='RdBu_r')
+    plt.show()
 
 
 def fft_wavelet_test() -> None:
-    w = Morse().make_fft_wave(1000, 1, 10)
+    w = Morse().make_wavelets([10])[0]
     plt.plot(w)
     plt.show()
 
