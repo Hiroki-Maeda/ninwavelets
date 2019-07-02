@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
 from typing import Union, List, Tuple
 from mne.time_frequency import tfr, morlet
-from morse import Morse, MorseMNE
+from wavelets import Morse, MorseMNE
 
 
 def test() -> None:
@@ -23,7 +23,7 @@ def test() -> None:
 def test3d() -> None:
     go = morlet(1000, [10])[0]
     mm = morlet(1000, [10], zero_mean=True)[0]
-    morse = MorseMNE(1000, 17.5, 3).make_wavelets([10])[0]
+    morse = Morse(1000, 17.5, 3).make_wavelets([10])[0]
     fig = plt.figure()
     ax = fig.add_subplot(211)
     half_morse = morse.shape[0] / 2

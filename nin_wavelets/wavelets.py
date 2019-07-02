@@ -7,7 +7,105 @@ from typing import Union, List, Tuple, Iterator, Iterable
 from mne.time_frequency import tfr, morlet
 
 
-class Morse:
+class WaveletBase:
+    def __init__(self, sfreq: float) -> None:
+        self.sfreq = sfreq
+
+    def _setup_base_waveshape(self, freq: float) -> Tuple[float, float]:
+        return 0, 0
+
+    def _make_fft_wave(self, total: float, one: float,
+                       freq: float = 1) -> np.ndarray:
+        pass
+
+    def _make_fft_waves(self, total: float, one: float,
+                        freqs: Iterable) -> Iterator:
+        pass
+
+    def make_wavelets(self,
+                      freqs: Union[List[float],
+                                   range, np.ndarray]) -> List[np.ndarray]:
+        pass
+
+    def cwt(self, wave: np.ndarray,
+            freqs: Union[List[float], range, np.ndarray],
+            max_freq: int = 0) -> np.ndarray:
+        '''
+        Run CWT.
+        This method is still experimental.
+        It has no error handling code now.
+        '''
+        one, total = self._setup_base_waveshape(freqs[0])
+        wave_length = wave.shape[0]
+        rate: float = wave.shape[0] / self.sfreq
+        total = total / rate
+        one = one / rate
+        wavelet_base = self._make_fft_waves(total, one, freqs)
+        wavelet: Iterator = map(lambda w: np.pad(w,
+                                                 [0, wave_length - w.shape[0]],
+                                                 'constant'),
+                                wavelet_base)
+        fft_wave = fft(wave)
+        result_map: Iterator = map(lambda x: ifft(x * fft_wave),
+                                   wavelet)
+        max_freq = int(self.sfreq / 2) if max_freq == 0 else max_freq
+        result_list = list(result_map)[:max_freq]
+        return np.array(result_list)
+
+    def power(self, wave: np.ndarray,
+              freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
+        '''
+        Run cwt and compute power.
+
+        Parameters
+        ----------
+        freqs: float | Frequencies. Before use this, please run plot.
+
+        Returns
+        -------
+        Result of cwt. np.ndarray.
+        '''
+        result: np.ndarray = self.cwt(wave, freqs)
+        return np.abs(result * np.conj(result))
+
+    def plot(self, freq: float, show: bool = True) -> plt.figure:
+        morse = self.make_wavelets([freq])[0]
+        fig = plt.figure(figsize=(6, 8))
+        ax = fig.add_subplot(311)
+        ax.plot(np.arange(0, morse.shape[0], 1),
+                morse,
+                label='morse')
+        ax1 = fig.add_subplot(312, projection='3d')
+        ax1.scatter3D(morse.real,
+                      np.arange(0, morse.shape[0], 1),
+                      morse.imag,
+                      label='morse')
+        ax.set_title('Generalized Morse Wavelet')
+        ax2 = fig.add_subplot(313)
+        ax2.set_title('Caution')
+        ax2.text(0.05, 0.1,
+                 'This is inverse Fourier transformed MorseWavelet.\n'
+                 'Originally, Morse wavelet is Frourier transformed wave.\n'
+                 'It should be used as it is Fourier transformed data.\n'
+                 'But, you can use it in the same way as'
+                 'MorletWavelet by IFFT.\n'
+                 'If wave continues to side of the window, wave is bad.\n'
+                 'Please set larger value to param "accuracy" and "length"\n'
+                 'It becomes bad easily when frequency is low.')
+        ax2.tick_params(labelbottom=False,
+                        labelleft=False,
+                        labelright=False,
+                        labeltop=False,
+                        bottom=False,
+                        left=False,
+                        right=False,
+                        top=False)
+        if show:
+            plt.show()
+        fig
+
+
+class Morse(WaveletBase):
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
                  length: float = 10, accuracy: float = 1,
                  n_jobs: int = 1) -> None:
@@ -161,8 +259,8 @@ class Morse:
                             )
         return wave
 
-    def make_fft_waves(self, total: float, one: float,
-                       freqs: Iterable) -> Iterator:
+    def _make_fft_waves(self, total: float, one: float,
+                        freqs: Iterable) -> Iterator:
         '''
         Make Fourier transformed morse wavelet.
         '''
@@ -191,83 +289,6 @@ class Morse:
         # normalize
         morse_wavelet /= linalg.norm(morse_wavelet.ravel()) * sqrt(0.5)
         return morse_wavelet
-
-    def cwt(self, wave: np.ndarray,
-            freqs: Union[List[float], range, np.ndarray],
-            max_freq: int = 0) -> np.ndarray:
-        '''
-        Run CWT.
-        This method is still experimental.
-        It has no error handling code now.
-        '''
-        one, total = self._setup_base_waveshape(freqs[0])
-        wave_length = wave.shape[0]
-        rate: float = wave.shape[0] / self.sfreq
-        total = total / rate
-        one = one / rate
-        wavelet_base = self.make_fft_waves(total, one, freqs)
-        wavelet: Iterator = map(lambda w: np.pad(w,
-                                                 [0, wave_length - w.shape[0]],
-                                                 'constant'),
-                                wavelet_base)
-        fft_wave = fft(wave)
-        result_map: Iterator = map(lambda x: ifft(x * fft_wave),
-                                   wavelet)
-        max_freq = int(self.sfreq / 2) if max_freq == 0 else max_freq
-        result_list = list(result_map)[:max_freq]
-        return np.array(result_list)
-
-    def power(self, wave: np.ndarray,
-              freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
-        '''
-        Run cwt and compute power.
-
-        Parameters
-        ----------
-        freqs: float | Frequencies. Before use this, please run plot.
-
-        Returns
-        -------
-        Result of cwt. np.ndarray.
-        '''
-        result: np.ndarray = self.cwt(wave, freqs)
-        return np.abs(result * np.conj(result))
-
-    def plot(self, freq: float, show: bool = True) -> plt.figure:
-        morse = self.make_wavelets([freq])[0]
-        fig = plt.figure(figsize=(6, 8))
-        ax = fig.add_subplot(311)
-        ax.plot(np.arange(0, morse.shape[0], 1),
-                morse,
-                label='morse')
-        ax1 = fig.add_subplot(312, projection='3d')
-        ax1.scatter3D(morse.real,
-                      np.arange(0, morse.shape[0], 1),
-                      morse.imag,
-                      label='morse')
-        ax.set_title('Generalized Morse Wavelet')
-        ax2 = fig.add_subplot(313)
-        ax2.set_title('Caution')
-        ax2.text(0.05, 0.1,
-                 'This is inverse Fourier transformed MorseWavelet.\n'
-                 'Originally, Morse wavelet is Frourier transformed wave.\n'
-                 'It should be used as it is Fourier transformed data.\n'
-                 'But, you can use it in the same way as'
-                 'MorletWavelet by IFFT.\n'
-                 'If wave continues to side of the window, wave is bad.\n'
-                 'Please set larger value to param "accuracy" and "length"\n'
-                 'It becomes bad easily when frequency is low.')
-        ax2.tick_params(labelbottom=False,
-                        labelleft=False,
-                        labelright=False,
-                        labeltop=False,
-                        bottom=False,
-                        left=False,
-                        right=False,
-                        top=False)
-        if show:
-            plt.show()
-        fig
 
 
 class MorseMNE(Morse):
