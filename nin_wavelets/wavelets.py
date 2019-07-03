@@ -17,7 +17,8 @@ class WaveletBase:
         self.accuracy = 1
         self.sfreq = sfreq
 
-    def _setup_base_waveshape(self, freq: float) -> Tuple[float, float]:
+    def _setup_base_waveshape(self, freq: float,
+                              rate: float = 1) -> np.ndarray:
         '''
         Setup wave shape.
 
@@ -32,20 +33,20 @@ class WaveletBase:
         Tuple[float, float]: (one, total)
         '''
 
-        one: float = 1 / freq / self.accuracy
-        total: float = self.sfreq / freq
-        return one, total
+        one: float = 1 / freq / self.accuracy / rate
+        total: float = self.sfreq / freq / rate
+        return np.arange(0, total, one)
 
     def _make_fft_wavelet(self, total: float, one: float,
                           freq: float = 1) -> np.ndarray:
         pass
 
-    def _make_fft_wavelets(self, total: float, one: float,
+    def _make_fft_wavelets(self, timeline: np.ndarray,
                            freqs: Iterable) -> Iterator:
         '''
         Make Fourier transformed wavelet.
         '''
-        return map(lambda freq: self._make_fft_wavelet(total, one, freq),
+        return map(lambda freq: self._make_fft_wavelet(timeline, freq),
                    freqs)
 
     def _make_wavelet(self, freq: float) -> np.ndarray:
@@ -81,12 +82,10 @@ class WaveletBase:
         This method is still experimental.
         It has no error handling code now.
         '''
-        one, total = self._setup_base_waveshape(freqs[0])
         wave_length = wave.shape[0]
         rate: float = wave.shape[0] / self.sfreq
-        total = total / rate
-        one = one / rate
-        wavelet_base = self._make_fft_wavelets(total, one, freqs)
+        timeline = self._setup_base_waveshape(freqs[0], rate)
+        wavelet_base = self._make_fft_wavelets(timeline, freqs)
         wavelet: Iterator = map(lambda w: np.pad(w,
                                                  [0, wave_length - w.shape[0]],
                                                  'constant'),

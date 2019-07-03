@@ -95,7 +95,7 @@ class Morse(WaveletBase):
         self._setup_peak()
         return self
 
-    def _make_fft_wavelet(self, total: float, one: float,
+    def _make_fft_wavelet(self, w: np.ndarray,
                           freq: float = 1) -> np.ndarray:
         '''
         Make Fourier transformed morse wavelet.
@@ -106,7 +106,6 @@ class Morse(WaveletBase):
         one: float | Sampling scale.
         '''
         self.a: float = 2 * (np.e * self.r / self.b) ** (self.b / self.r)
-        w: np.ndarray = np.arange(0, total, one)
         step: np.ndarray = np.heaviside(w, w)
         wave: np.ndarray = (step * self.a * (w / freq) ** self.b *
                             np.e ** (
@@ -124,8 +123,8 @@ class Morse(WaveletBase):
         And so, using this for mne is not good.
         Plot may be useful, so this method will not be discarded.
         '''
-        one, total = self._setup_base_waveshape(freq)
-        wave = self._make_fft_wavelet(total, one)
+        timeline = self._setup_base_waveshape(freq)
+        wave = self._make_fft_wavelet(timeline)
         morse_wavelet: np.ndarray = ifft(wave)
         half = int(morse_wavelet.shape[0])
         band = int(half / 2 / freq * self.length)
