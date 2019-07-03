@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
 from typing import Union, List, Tuple
 from mne.time_frequency import tfr, morlet
-from wavelets import Morse, MorseMNE
+from nin_wavelets import Morse, MorseMNE
 
 
 def test() -> None:
