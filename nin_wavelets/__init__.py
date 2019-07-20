@@ -1,3 +1,2 @@
 from .wavelets import WaveletBase
-from .morse import Morse, MorseMNE
-from .morlet import Morlet
+from .morse import Morse, MorseMNE, Morlet
