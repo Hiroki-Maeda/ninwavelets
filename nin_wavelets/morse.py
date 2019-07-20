@@ -12,8 +12,6 @@ class Morse(WaveletBase):
                  length: float = 10, accuracy: float = 1) -> None:
         '''
         Generator of Generalized Morse Wavelets.
-        It is compatible with mne-python.(But not recommended.)
-        It generates argument Ws for mne.time_frequency.tfr.cwt.
         Example.
         >>> morse = Morse(1000).beta(20)
         >>> freq = 60
