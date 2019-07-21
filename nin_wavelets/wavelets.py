@@ -8,14 +8,21 @@ from enum import Enum
 
 
 def kill_nyquist(wave: np.ndarray) -> np.ndarray:
+    '''
+    Kill wave over Nyquist frequency.
+    Not a method to kill Mr Nyquist, I am sorry.
+    '''
     half_size = int(wave.shape[0] / 2)
     wave = np.pad(wave[:half_size],
                   [0, wave.shape[0] - half_size],
-                  'constant')
+                  'constant', constant_values=0)
     return wave
 
 
 def nin_fft(wave: np.ndarray) -> np.ndarray:
+    '''
+    FFT without nyquist freq.
+    '''
     return kill_nyquist(fft(wave))
 
 
@@ -40,6 +47,8 @@ class WaveletBase:
         self.length = 10
         self.help = ''
         self.use_cuda = False
+        self.base_freq = 1
+        self.real_wave_length = 1
 
     def _setup_base_trans_waveshape(self, freq: float,
                                     real_length: float = 1) -> np.ndarray:
@@ -61,7 +70,7 @@ class WaveletBase:
         return np.arange(0, total, one)
 
     def _setup_base_waveletshape(self, freq: float,
-                                 real_length: float = 1) -> np.ndarray:
+                                 real_length: float = 1, zero_mean: bool = False) -> np.ndarray:
         '''
         Setup wave shape.
 
@@ -77,6 +86,8 @@ class WaveletBase:
         '''
         total: float = real_length / self.peak_freq(freq) * freq * 2 * np.pi
         one = 1 / self.sfreq * 2 * np.pi * freq / self.peak_freq(freq)
+        if zero_mean:
+            return np.arange(-total / 2, total / 2, one)
         return np.arange(0, total, one)
 
     def peak_freq(self, freq: float) -> float:
@@ -86,30 +97,37 @@ class WaveletBase:
         wave /= np.linalg.norm(wave.ravel()) * np.sqrt(0.5)
         return wave
 
-    def make_fft_wavelet(self, base_freq: float, real_wave_length: float,
-                         freq: float = 1) -> np.ndarray:
+    def make_fft_wavelet(self, freq: float = 1) -> np.ndarray:
         if self.mode in [WaveletMode.Reverse, WaveletMode.Both]:
-            timeline = self._setup_base_trans_waveshape(base_freq,
-                                                        real_wave_length)
-            trans_wavelet = self.trans_wavelet_formula(timeline, freq)
-            return self._normalize(trans_wavelet)
+            timeline = self._setup_base_trans_waveshape(self.real_wave_length)
+            result = self.trans_wavelet_formula(timeline, freq)
+            return self._normalize(result)
         else:
             wavelet = self.make_wavelet(freq)
-            wavelet = np.pad(wavelet,
-                             int((self.sfreq * real_wave_length
-                                  - wavelet.shape[0]) / 2),
-                             'constant')
-            result = self._normalize(nin_fft(wavelet) / self.sfreq)
-            result = kill_nyquist(result)
+            wavelet = wavelet.astype(np.complex128)
+            half = int((self.sfreq * self.real_wave_length - wavelet.shape[0]) / 2),
+
+            wavelet = np.hstack((np.zeros(half, dtype=np.complex128),
+                                 wavelet,
+                                 np.zeros(half, dtype=np.complex128)))
+            # wavelet = np.pad(wavelet,
+            #                  int((self.sfreq * self.real_wave_length
+            #                       - wavelet.shape[0])
+            #                      / 2),
+            #                  'constant')
+            # result = np.abs(fft(wavelet) / self.sfreq)
+            wavelet = wavelet.astype(np.complex128)
+            result = fft(wavelet) / self.sfreq
+            result.imag = np.abs(result.imag)
+            result.real = np.abs(result.real)
+            result = self._normalize(result)
             return result
 
-    def make_fft_wavelets(self, base_freq: float, real_wave_length: float,
-                          freqs: Iterable) -> Iterator:
+    def make_fft_wavelets(self, freqs: Iterable) -> Iterator:
         '''
         Make Fourier transformed wavelet.
         '''
-        return map(lambda freq: self.make_fft_wavelet(base_freq,
-                                                      real_wave_length, freq),
+        return map(lambda freq: self.make_fft_wavelet(freq),
                    freqs)
 
     def wavelet_formula(self, timeline: np.ndarray, freq: float) -> np.ndarray:
@@ -124,20 +142,20 @@ class WaveletBase:
             timeline = self._setup_base_trans_waveshape(freq)
             wave = self.trans_wavelet_formula(timeline)
             wavelet: np.ndarray = ifft(wave)
+            half = int(wavelet.shape[0])
+            band = int(half / 2 / freq * self.length)
+            start: int = half - band if band < half // 2 else half // 2
+            stop: int = half + band if band < half // 2 else half // 2 * 3
+            start: int = half // 2
+            stop: int = half // 2 * 3
+            # cut side of wavelets and contactnate
+            total_wavelet = np.hstack((np.conj(np.flip(wavelet)),
+                                       wavelet))
+            wavelet = total_wavelet[start: stop]
         else:
-            timeline = self._setup_base_waveletshape(freq)
+            timeline = self._setup_base_waveletshape(freq, zero_mean=True)
             wavelet = self.wavelet_formula(timeline, freq)
-        half = int(wavelet.shape[0])
-        band = int(half / 2 / freq * self.length)
-        start: int = half - band if band < half // 2 else half // 2
-        stop: int = half + band if band < half // 2 else half // 2 * 3
-        # cut side of wavelets and contactnate
-        total_wavelet = np.hstack((np.conj(np.flip(wavelet)),
-                                   wavelet))
-        wavelet = total_wavelet[start: stop]
-        # normalize
-        self._normalize(wavelet)
-        return wavelet
+        return self._normalize(wavelet)
 
     def make_wavelets(self,
                       freqs: Union[List[float],
@@ -163,7 +181,8 @@ class WaveletBase:
 
     def cwt(self, wave: np.ndarray,
             freqs: Union[List[float], range, np.ndarray],
-            max_freq: int = 0) -> np.ndarray:
+            max_freq: int = 0,
+            kill_nyquist: bool = True) -> np.ndarray:
         '''cwt
         Run CWT.
         This method is still experimental.
@@ -174,12 +193,8 @@ class WaveletBase:
         '''
         freq_dist = freqs[1] - freqs[0]
         wave_length = wave.shape[0]
-        real_wave_length: float = wave.shape[0] / self.sfreq
-        base_freq = 1
-        # base_freq = wave.shape[0]
-        wavelet_base = self.make_fft_wavelets(base_freq,
-                                              real_wave_length,
-                                              freqs)
+        self.real_wave_length: float = wave.shape[0] / self.sfreq
+        wavelet_base = self.make_fft_wavelets(freqs)
         wavelet: Iterator = map(lambda w: np.pad(w,
                                                  [0, wave_length - w.shape[0]],
                                                  'constant'),
@@ -193,7 +208,10 @@ class WaveletBase:
             result_list = list(result_map)[:max_freq]
             return np.array(result_list)
         else:
-            fft_wave = nin_fft(wave)
+            if kill_nyquist:
+                fft_wave = nin_fft(wave)
+            else:
+                fft_wave = fft(wave)
             result_map = map(lambda x: ifft(x * fft_wave),
                              wavelet)
             if max_freq == 0:

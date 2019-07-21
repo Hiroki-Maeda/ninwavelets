@@ -2,6 +2,7 @@ from setuptools import setup, find_packages
 setup(
     name='nin_wavelets',
     version='0.0.1',
+    install_requires=['scipy', 'numpy'],
     package_dir={'nin_wavelets': 'nin_wavelets'},
     packages=find_packages('nin_wavelets'),
     description='My wavelets package',

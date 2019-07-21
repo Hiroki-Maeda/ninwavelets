@@ -84,6 +84,7 @@ class Morlet(WaveletBase):
     '''
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
                  accuracy: float = 1.) -> None:
+        super(Morlet, self).__init__(sfreq)
         self.mode = WaveletMode.Normal
         # self.mode = WaveletMode.Both
         self.length = 10
