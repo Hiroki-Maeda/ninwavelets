@@ -69,8 +69,8 @@ class WaveletBase:
         total: float = self.sfreq / freq / real_length
         return np.arange(0, total, one)
 
-    def _setup_base_waveletshape(self, freq: float,
-                                 real_length: float = 1, zero_mean: bool = False) -> np.ndarray:
+    def _setup_base_waveletshape(self, freq: float, real_length: float = 1,
+                                 zero_mean: bool = False) -> np.ndarray:
         '''
         Setup wave shape.
 
@@ -105,17 +105,12 @@ class WaveletBase:
         else:
             wavelet = self.make_wavelet(freq)
             wavelet = wavelet.astype(np.complex128)
-            half = int((self.sfreq * self.real_wave_length - wavelet.shape[0]) / 2),
+            half = int((self.sfreq *
+                        self.real_wave_length - wavelet.shape[0]) / 2),
 
             wavelet = np.hstack((np.zeros(half, dtype=np.complex128),
                                  wavelet,
                                  np.zeros(half, dtype=np.complex128)))
-            # wavelet = np.pad(wavelet,
-            #                  int((self.sfreq * self.real_wave_length
-            #                       - wavelet.shape[0])
-            #                      / 2),
-            #                  'constant')
-            # result = np.abs(fft(wavelet) / self.sfreq)
             wavelet = wavelet.astype(np.complex128)
             result = fft(wavelet) / self.sfreq
             result.imag = np.abs(result.imag)
@@ -182,7 +177,7 @@ class WaveletBase:
     def cwt(self, wave: np.ndarray,
             freqs: Union[List[float], range, np.ndarray],
             max_freq: int = 0,
-            kill_nyquist: bool = True) -> np.ndarray:
+            kill_nyquist: bool = False) -> np.ndarray:
         '''cwt
         Run CWT.
         This method is still experimental.

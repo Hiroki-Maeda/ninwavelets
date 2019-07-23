@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
 from typing import Union, List, Tuple
 from mne.time_frequency import tfr, morlet
-from nin_wavelets import Morse, MorseMNE, Morlet
+from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode
+
 from .tooltip import Parallel
 
 
@@ -101,6 +102,7 @@ def cwt_test(use_cuda: bool = False) -> None:
     morse = Morse()
     morse.use_cuda = use_cuda
     nin_morlet = Morlet()
+    nin_morlet.mode = WaveletMode.Both
     nin_morlet.use_cuda = use_cuda
 
     p.append(morse.power, sin, np.arange(1., 1000, 1))
@@ -123,10 +125,11 @@ def cwt_test(use_cuda: bool = False) -> None:
 
 
 def fft_wavelet_test() -> None:
-    hz = 10.
+    hz = 300.
     r = 3
+    b = 17.5
     s = 7
-    morse = Morse(r=r)
+    morse = Morse(r=r, b=100)
     morlet = Morlet(sigma=s)
     fig = plt.figure()
     p = Parallel(4)
