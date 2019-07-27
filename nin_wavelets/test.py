@@ -87,39 +87,43 @@ def cwt_test(use_cuda: bool = False) -> None:
                                  'constant') *
                           300 * 2 * np.pi)
                    )
+    m = list(Morse().make_fft_wavelets(range(1, 1000)))
     plt.plot(sin)
+    plt.plot(m[10])
+    plt.plot(m[100])
+    plt.plot(m[500])
     plt.plot(np.abs(fft(sin)) / 1000)
     plt.show()
 
     p = Parallel(3)
-    ax1 = plt.subplot(3, 1, 1)
-    ax2 = plt.subplot(3, 1, 2)
-    ax3 = plt.subplot(3, 1, 3)
+    ax1 = plt.subplot(2, 1, 1)
+    ax2 = plt.subplot(2, 1, 2)
+    # ax3 = plt.subplot(3, 1, 3)
     ax1.invert_yaxis()
     ax2.invert_yaxis()
-    ax3.invert_yaxis()
+    # ax3.invert_yaxis()
 
     morse = Morse()
+    morse.mode = 4
     morse.use_cuda = use_cuda
     nin_morlet = Morlet()
     nin_morlet.mode = WaveletMode.Both
-    nin_morlet.use_cuda = use_cuda
 
-    p.append(morse.power, sin, np.arange(1., 1000, 1))
+    p.append(morse.power, sin, np.arange(1., 1000, 1), max_freq=500)
     p.append(nin_morlet.power, sin, np.arange(1., 1000, 1))
     # p.append(tfr.cwt, np.array([sin]), morlet(1000, np.arange(1, 1000, 1)))
-    p.append(tfr.cwt, np.array([sin]),
-             nin_morlet.make_wavelets(np.arange(1., 1000, 1)))
-    result_morse, result_morlet, result_mne_morlet = p.run()
-    # result_morse, result_morlet = p.run()
+    # p.append(tfr.cwt, np.array([sin]),
+    #          nin_morlet.make_wavelets(np.arange(1., 1000, 1)))
+    # result_morse, result_morlet, result_mne_morlet = p.run()
+    result_morse, result_morlet = p.run()
 
     ax1.imshow(np.abs(result_morse), cmap='RdBu_r')
     ax2.imshow(np.abs(result_morlet), cmap='RdBu_r')
     # ax2.imshow(nn, cmap='RdBu_r')
-    ax3.imshow(np.abs(result_mne_morlet[0]), cmap='RdBu_r')
+    # ax3.imshow(np.abs(result_mne_morlet[0]), cmap='RdBu_r')
     ax1.invert_yaxis()
     ax2.invert_yaxis()
-    ax3.invert_yaxis()
+    # ax3.invert_yaxis()
     plt.show()
 
 
@@ -129,7 +133,7 @@ def fft_wavelet_test() -> None:
     r = 3
     b = 17.5
     s = 7
-    morse = Morse(r=r, b=100)
+    morse = Morse(r=r, b=b)
     morlet = Morlet(sigma=s)
     fig = plt.figure()
     p = Parallel(4)
