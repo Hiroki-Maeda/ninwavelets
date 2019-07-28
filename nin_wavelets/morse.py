@@ -7,45 +7,45 @@ from enum import Enum
 
 
 class Morse(WaveletBase):
+    '''
+    Generator of Generalized Morse Wavelets.
+    Example.
+    >>> morse = Morse(1000, r=3., b=17.5)
+    >>> freq = 60
+    >>> time = np.arange(0, 0.3, 0.001)
+    >>> sin = np.array([np.sin(time * freq * 2 * np.pi)])
+    >>> result = morse.power(sin, range(1, 100))
+    >>> plt.imshow(result, cmap='RdBu_r')
+    >>> plt.gca().invert_yaxis()
+    >>> plt.title('CWT of 60Hz sin wave')
+    >>> plt.show()
+
+    Parameters
+    ----------
+    sfreq: float | Sampling frequency.
+        This behaves like sfreq of mne-python.
+    b: float | beta value
+    r: float | gamma value. 3 may be good value.
+    accuracy: float | Accurancy paramater.
+        It does not make sence when you use fft only.
+        Because, Morse Wavelet needs Inverse Fourier Transform,
+        length of wavelet changes but it is tiring to detect. :(
+        If you use ifft, low frequency causes bad wave.
+        Please check wave by Morse.plot(freq) before use it.
+        If wave is bad, large accuracy can help you.(But needs cpu power)
+    length: float | Length of wavelet.
+        It does not make sence when you use fft only.
+        Too long wavelet causes slow calculation.
+        This param is cutting threshould of wavelets.
+        Peak wave * length is the length of wavelet.
+
+    Returns
+    -------
+    As constructor, Morse instance its self.
+    '''
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
                  length: float = 10, accuracy: float = 1) -> None:
-        '''
-        Generator of Generalized Morse Wavelets.
-        Example.
-        >>> morse = Morse(1000).beta(20)
-        >>> freq = 60
-        >>> time = np.arange(0, 0.3, 0.001)
-        >>> sin = np.array([np.sin(time * freq * 2 * np.pi)])
-        >>> result = morse.power(sin, range(1, 100))
-        >>> plt.imshow(result, cmap='RdBu_r')
-        >>> plt.gca().invert_yaxis()
-        >>> plt.title('CWT of 60Hz sin wave')
-        >>> plt.show()
-
-        Parameters
-        ----------
-        sfreq: float | Sampling frequency.
-            This behaves like sfreq of mne-python.
-        b: float | beta value
-        r: float | gamma value. 3 may be good value.
-        accuracy: float | Accurancy paramater.
-            It does not make sence when you use fft only.
-            Because, Morse Wavelet needs Inverse Fourier Transform,
-            length of wavelet changes but it is tiring to detect. :(
-            If you use ifft, low frequency causes bad wave.
-            Please check wave by Morse.plot(freq) before use it.
-            If wave is bad, large accuracy can help you.(But needs cpu power)
-        length: float | Length of wavelet.
-            It does not make sence when you use fft only.
-            Too long wavelet causes slow calculation.
-            This param is cutting threshould of wavelets.
-            Peak wave * length is the length of wavelet.
-
-        Returns
-        -------
-        As constructor, Morse instance its self.
-        '''
         super(Morse, self).__init__(sfreq)
         self.r: float = r
         self.b: float = b
@@ -64,23 +64,55 @@ class Morse(WaveletBase):
                     accuracy" and "length"
                     It becomes bad easily when frequency is low.'''
 
-    def trans_wavelet_formula(self, w: np.ndarray,
+    def trans_wavelet_formula(self, freqs: np.ndarray,
                               freq: float = 1.) -> np.ndarray:
         '''
         Make Fourier transformed morse wavelet.
         '''
-        w = w / freq
-        step: np.ndarray = np.heaviside(w, w)
-        wave: np.ndarray = 2 * (step * (w ** self.b) *
+        freqs = freqs / freq
+        step: np.ndarray = np.heaviside(freqs, freqs)
+        wave: np.ndarray = 2 * (step * (freqs ** self.b) *
                                 np.e ** ((self.b / self.r) *
-                                         (1 - w ** self.r)
+                                         (1 - freqs ** self.r)
                                          )) / np.pi
         return wave
 
 
 class Morlet(WaveletBase):
     '''
-    Base class of wavelets.
+    Morlet Wavelets.
+    Example.
+    >>> morse = Morse(1000, sigma=7.)
+    >>> freq = 60
+    >>> time = np.arange(0, 0.3, 0.001)
+    >>> sin = np.array([np.sin(time * freq * 2 * np.pi)])
+    >>> result = morse.power(sin, range(1, 100))
+    >>> plt.imshow(result, cmap='RdBu_r')
+    >>> plt.gca().invert_yaxis()
+    >>> plt.title('CWT of 60Hz sin wave')
+    >>> plt.show()
+
+    Parameters
+    ----------
+    sfreq: float | Sampling frequency.
+        This behaves like sfreq of mne-python.
+    sigma: float | sigma value
+    accuracy: float | Accurancy paramater.
+        It does not make sence when you use fft only.
+        Because, Morse Wavelet needs Inverse Fourier Transform,
+        length of wavelet changes but it is tiring to detect. :(
+        If you use ifft, low frequency causes bad wave.
+        Please check wave by Morse.plot(freq) before use it.
+        If wave is bad, large accuracy can help you.(But needs cpu power)
+    length: float | Length of wavelet.
+        It does not make sence when you use fft only.
+        Too long wavelet causes slow calculation.
+        This param is cutting threshould of wavelets.
+        Peak wave * length is the length of wavelet.
+
+    Returns
+    -------
+    As constructor, Morse instance its self.
     '''
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
                  accuracy: float = 1.) -> None:
@@ -95,12 +127,12 @@ class Morlet(WaveletBase):
                   2 * np.e ** (-3 / 4 * self.sigma ** 2)) ** (-1/2)
         self.k = np.e ** (-self.sigma ** 2 / 2)
 
-    def trans_wavelet_formula(self, timeline: np.ndarray,
+    def trans_wavelet_formula(self, freqs: np.ndarray,
                               freq: float = 1) -> np.ndarray:
-        timeline = timeline / freq * self.peak_freq(freq)
+        freqs = freqs / freq * self.peak_freq(freq)
         return (self.c * np.pi ** (-1/4) *
-                (np.e**(-(self.sigma-timeline)**2/2) -
-                 self.k * np.e ** (-timeline**2/2)))
+                (np.e**(-(self.sigma-freqs)**2/2) -
+                 self.k * np.e ** (-freqs**2/2)))
 
     def wavelet_formula(self, timeline: np.ndarray,
                         freq: float = 1) -> np.ndarray:
@@ -114,7 +146,10 @@ class Morlet(WaveletBase):
 
 class MorseMNE(Morse):
     '''
-    MorseWavelets for mne
+    MorseWavelets for mne.
+    It uses GMW with mne function.
+    But, it use iFFT and FFT to no purpose.
+    This ugly class is disgusting and depricated.
     '''
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,

@@ -1,5 +1,5 @@
 # NinWavelets
-This is a python script to generate 'Generalized Morse Wavelets'(GMW).
+This is a python package to generate 'Generalized Morse Wavelets'(GMW).
 And perform CWT based on GMW.
 
 # Install
@@ -13,6 +13,7 @@ pip install git+https://github.com/uesseu/nin_wavelets
 These are automatically installed.
 - Scipy
 - numpy
+- cython
 
 Optionally, you can use this.
 - mne
@@ -29,7 +30,7 @@ Destructive changes may be made.
 
 
 # Exsample
-It is similar to morlet wavelet, if you use default param.
+GMW is similar to morlet wavelet, if you use default param.
 
 ```
 morse = Morse(1000, gamma=3, beta=17.5)
@@ -46,18 +47,20 @@ plt.show()
 # TODO
 
 - Other wavelets
-    + Gabor
-    + Mexican hat
-    + Haar
+    + [x] Morlet
+    + [ ] Gabor
+    + [ ] Mexican hat
+    + [ ] Haar
     + etc...
 - DWT
-- [-] Use cuda, cython and speedup!
-    + [x] I tried cuda and it was slow...;(
-- [-] Kill typos(I am not good at English)
+- [x] Use cuda, cython and speedup!
+    + [x] It was cythonized and may be faster. I think ;)
+    + [-] I tried cuda and it was slow...;(
+- [-] Kill typos(I am a yellow monkey and not good at English) ;(
 
 # Reference
 ## Morse Class
-This is a class to generate morse wavelets.
+This is a class to GMW.
 
 ```python
 from nin_wavelets import Morse
@@ -80,6 +83,7 @@ Parameters
 | length   | float | 10      | Length paramater. It affects only when you plot wavelets.    |
 
 
+
 ```python
 morse = Morse()
 
@@ -91,33 +95,39 @@ morse = Morse()
 wavelet = Morse(1000, 17.5, 3).make_wavelets([10])[0]
 ```
 
-Make morse wavelets.
+Make list of morse wavelets.  
 
-| Param | Type  |                                      |
-| freq  | float | Frequency. If frequency is too small |
+| Param | Type  |                      |
+| freq  | float | List of frequencies. |
 
-Because it returnes bad wave easily,
-you should use it when you plot only.
-For example, sfreq=1000, freq=3 it returnes bad wave.
-If you want good wave, you must set
-large accuracy and length when you make this instance.
+Because it returnes bad wave easily,  
+you should use it when you plot only.  
+For example, sfreq=1000, freq=3 it returnes bad wave.  
+If you want good wave, you must set  
+large accuracy and length when you make this instance.  
 
-Returns
-MorseWavelet: list of np.ndarray
+Returns  
+MorseWavelet: list of np.ndarray  
 
 ### make_fft_waves
 ```python
 make_fft_waves(self, total: float, one: float,
                freqs: Iterable) -> Iterator:
 ```
-Make Fourier transformed morse wavelet.
-If wavelet is originally Frourier transformed wavelet,
+Make Fourier transformed Wavelet.
+If the wavelet is originally Frourier transformed wavelet,
 it just calculate original formula.
 If wavelet is originally not Fourier transformed wavelet,
 it run FFT to make them.
 
 ### cwt
-cwt method class.
+CWT method.
+
+| Param              | Type  |                                               |
+| wave               | float | Wave drawed by numpy.                         |
+| freqs              | float | List of frequencies.                          |
+| max_freq           | float | Max freq.                                     |
+| kill_nikist(False) | bool  | Whether kill nikist freqs of wave to analyze. |
 
 ```python
 def cwt(self, wave: np.ndarray,
@@ -127,6 +137,12 @@ def cwt(self, wave: np.ndarray,
 
 example
 ```python
+import numpy as np
+freq: float = 60
+length: float = 5
+
+time: np.ndarray = np.arange(0, length, 0.001)
+sin = np.array(np.sin(time * freq * 2 * np.pi))
 morse = Morse()
 result = morse.cwt(sin, np.arange(1, 1000, 1))
 plt.imshow(np.abs(result), cmap='RdBu_r')
@@ -135,17 +151,7 @@ plt.show()
 
 max_freq is a param to cut result.
 
-## MorseMNE Class
-It is same as Morse class.
-But when you run cwt, it uses mne.time_frequency.tfr.cwt to run cwt.
-It is not recommended, because mne.time_frequency.tfr.cwt needs
-wavelet which is 'not Fourier transformed'.
-Basically, GMW is a wavelet which is originally
-'Fourier transformed wavelet' and so, you need to run
-InverseFourier transform before you perform CWT.
-I think, this ugly method is disgusting.
-
-### power
+## power
 ```
 power(self, wave: np.ndarray,
       freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
@@ -153,9 +159,31 @@ power(self, wave: np.ndarray,
 
 Run cwt of mne-python, and compute power.
 
-Parameters
-freqs: float | Frequencies. Before use this, please run plot.
+| Param              | Type  |                                               |
+| wave               | float | Wave drawed by numpy.                         |
+| freqs              | float | List of frequencies.                          |
+| max_freq           | float | Max freq.                                     |
+| kill_nikist(False) | bool  | Whether kill nikist freqs of wave to analyze. |
 
-Returns
-Result of cwt. np.ndarray.
+Returns  
+Result of cwt. np.ndarray.  
 
+## MorseMNE Class
+MorseMNE class to use function of MNE-python,  
+which is Great package to analyze EEG/MEG.  
+It is same as Morse class except cwt but  
+if you run cwt, it uses mne.time_frequency.tfr.cwt to run cwt.  
+
+But it is not recommended, because mne.time_frequency.tfr.cwt needs  
+wavelet which is 'not Fourier transformed'.  
+Basically, GMW is a wavelet which is originally  
+'Fourier transformed wavelet' and so, you need to run  
+InverseFourier transform before you perform CWT.  
+I think, this ugly class is disgusting.  
+
+By the way, Morlet Wavelet has formula which is Fourier transformed.  
+And so, I think, it may be better to use the formula
+even if you use Morlet Wavelet.
+
+# Licence
+This software is released under the MIT License, see LICENSE.txt.

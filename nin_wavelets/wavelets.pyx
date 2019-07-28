@@ -30,11 +30,22 @@ cdef nin_fft(np.ndarray[np.complex128_t, ndim=1]wave):
 
 
 class WaveletMode(Enum):
+    '''
+    Modes of Wavelets.
+    These are used as Wavelet.mode
+    '''
     Normal = 0
+    # Use Wavelet fromula only
     Both = 1
+    # Use Wavwlet formula and FFTed formula.
     Reverse = 2
+    # Use FFTed formula only
     Indifferentiable = 3
+    # Indifferentiable formula
     Twice = 4
+    # Even if FFTed formula is there,
+    # Use IFFTed Wavelet, and FFT.
+    # This is ugly and not accurate.
 
 
 cdef class WaveletBase:
@@ -100,10 +111,31 @@ cdef class WaveletBase:
         return 1.
 
     cdef _normalize(self, np.ndarray[np.complex128_t, ndim=1] wave):
+        ''' Normalize norm of complex array
+
+        Parameters
+        ----------
+        wave: np.ndarray[np.complex128, ndim=1] |
+            Wave to normalize.
+
+        Returns
+        -------
+        np.ndarray[np.complex128, ndim=1]: Normalized wave.
+        '''
         wave /= np.linalg.norm(wave.ravel()) * np.sqrt(0.5)
         return wave
 
     cpdef make_fft_wavelet(self, freq: c.float = 1.):
+        ''' Make single FFTed wavelet.
+
+        Parameters
+        ----------
+        freq: float | Frequency of wavelet.
+
+        Returns
+        -------
+        np.ndarray[np.complex128, ndim=1]: FFTed Wavelet.
+        '''
         if self.mode in [WaveletMode.Reverse, WaveletMode.Both]:
             timeline = self._setup_base_trans_waveshape(self.real_wave_length)
             result = np.asarray(self.trans_wavelet_formula(timeline, freq),
@@ -126,8 +158,16 @@ cdef class WaveletBase:
             return result
 
     def make_fft_wavelets(self, freqs: Iterable) -> Iterator:
-        '''
+        ''' Make list of FFTed wavelets.
         Make Fourier transformed wavelet.
+
+        Parameters
+        ----------
+        freq: float | Frequency of wavelet.
+
+        Returns
+        -------
+        np.ndarray[np.complex128, ndim=1]: FFTed Wavelet.
         '''
         self.fft_wavelets = []
         for x in freqs:
@@ -135,11 +175,50 @@ cdef class WaveletBase:
         return self.fft_wavelets
 
     def wavelet_formula(self, timeline: np.ndarray, freq: c.float) -> np.ndarray:
+        ''' wavelet_formula
+        The formula of Wavelet.
+        Other procedures are performed by other methods.
+
+        Parameters
+        ----------
+        timeline: np.ndarray[np.float, ndim=1]|
+            Time value of formula.
+        freq: float|
+            If you want to setup peak frequency,
+            this variable may be useful.
+
+        Returns
+        -------
+        Base of wavelet.
+            timeline: np.ndarray:
+            
+        freq: float:
+        '''
         return timeline
 
-    def trans_wavelet_formula(self, timeline: np.ndarray,
+    def trans_wavelet_formula(self, freqs: np.ndarray,
                               freq: c.float = 1.) -> np.ndarray:
-        return timeline
+        ''' trans_wavelet_formula
+        The formula of Fourier Transformed Wavelet.
+        Other procedures are performed by other methods.
+
+        Parameters
+        ----------
+        freqs: np.ndarray[np.float, ndim=1]|
+            Frequencies.
+            If length of time is same as freqs, It is easy to write.
+        freq: float|
+            If you want to setup peak frequency,
+            this variable may be useful.
+
+        Returns
+        -------
+        Base of wavelet.
+            freqs: np.ndarray:
+            
+        freq: float:
+        '''
+        return freqs
 
     cpdef make_wavelet(self, freq: c.float):
         if self.mode in [WaveletMode.Reverse, WaveletMode.Twice]:
@@ -166,15 +245,10 @@ cdef class WaveletBase:
         '''
         Make wavelets.
         It returnes list of wavelet, and it is compatible with mne-python.
-        (As argument of Ws of mne.time_frequency.tfr.cwt)
 
         Parameters
         ----------
-        freqs: List[float] | Frequency. If frequency is too small,
-            it returnes bad wave easily.
-            For example, sfreq=1000, freq=3 it returnes bad wave.
-            If you want good wave, you must set large accuracy, and length
-            when you make this instance.
+        freqs: List[float] | Frequencies.
 
         Returns
         -------
@@ -191,11 +265,14 @@ cdef class WaveletBase:
             kill_nyquist: bool = False):
         '''cwt
         Run CWT.
-        This method is still experimental.
 
-        wave:
-        freqs:
-        max_freq:
+        wave: np.ndarray| Wave to analyze
+        freqs: Union[List[float], range, np.ndarray]|
+            Frequencies
+        max_freq: int| Max Frequency
+        kill_nyquist: bool|
+            Kill frequencies over Nyquist frequency.
+            I do not mean kill Dr. Nyquist.
         '''
         wave2: complex128_t[:] = wave
         freq_dist: c.int = freqs[1] - freqs[0]
@@ -227,7 +304,11 @@ cdef class WaveletBase:
 
         Parameters
         ----------
+        wave: np.ndarray| Wave to analyze
         freqs: float | Frequencies. Before use this, please run plot.
+        kill_nyquist: bool|
+            Kill frequencies over Nyquist frequency.
+            I do not mean kill Dr. Nyquist.
 
         Returns
         -------
@@ -237,6 +318,19 @@ cdef class WaveletBase:
         return np.abs(result)
 
     def plot(self, freq: float, show: bool = True) -> plt.figure:
+        '''
+        Plot wavelet.
+
+        Parameters
+        ----------
+        freq: float | Frequency of Wavelet.
+        show: bool| Show plot.
+
+        Returns
+        -------
+        Fig of matplotlib.
+        '''
+        plt_num = 2
         if self.help == '':
             plt_num = 3
         wavelet = self.make_wavelets([freq])[0]
@@ -265,6 +359,5 @@ cdef class WaveletBase:
                             top=False)
         if show:
             plt.show()
-        fig
-
+        return fig
 
