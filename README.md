@@ -22,11 +22,11 @@ Optionally, you can use this.
 pip install mne
 ```
 
-At first, it was written for mne python, but using mne function is ugly way.
-(Because it needs inverse Fourier transform to no purpose.)
-Now it has own CWT method.
-It is brand new project, and under heavily development.
-Destructive changes may be made.
+At first, it was written for mne python, but using mne function is ugly way.  
+(Because it needs inverse Fourier transform to no purpose.)  
+Now it has own CWT method.  
+It is brand new project, and under heavily development.  
+Destructive changes may be made.  
 
 
 # Exsample
@@ -44,19 +44,6 @@ plt.title('CWT of 60Hz sin wave')
 plt.show()
 ```
 
-# TODO
-
-- Other wavelets
-    + [x] Morlet
-    + [ ] Gabor
-    + [ ] Mexican hat
-    + [ ] Haar
-    + etc...
-- DWT
-- [x] Use cuda, cython and speedup!
-    + [x] It was cythonized and may be faster. I think ;)
-    + [-] I tried cuda and it was slow...;(
-- [-] Kill typos(I am a yellow monkey and not good at English) ;(
 
 # Reference
 ## Morse Class
@@ -75,7 +62,7 @@ Morse(self, sfreq: float = 1000,
 Parameters
 
 | Param    | Type  | Default |                                                              |
-| --       | --    |         | --                                                           |
+| --       | --    | --      | --                                                           |
 | sfreq    | float | 1000Hz  | Sampling frequency.                                          |
 | b        | float | 17.5    | beta value                                                   |
 | r        | float | 3       | gamma value. 3 may be good value.                            |
@@ -98,6 +85,7 @@ wavelet = Morse(1000, 17.5, 3).make_wavelets([10])[0]
 Make list of morse wavelets.  
 
 | Param | Type  |                      |
+|-------|-------|----------------------|
 | freq  | float | List of frequencies. |
 
 Because it returnes bad wave easily,  
@@ -124,6 +112,7 @@ it run FFT to make them.
 CWT method.
 
 | Param              | Type  |                                               |
+|--------------------|-------|-----------------------------------------------|
 | wave               | float | Wave drawed by numpy.                         |
 | freqs              | float | List of frequencies.                          |
 | max_freq           | float | Max freq.                                     |
@@ -160,6 +149,7 @@ power(self, wave: np.ndarray,
 Run cwt of mne-python, and compute power.
 
 | Param              | Type  |                                               |
+|--------------------|-------|-----------------------------------------------|
 | wave               | float | Wave drawed by numpy.                         |
 | freqs              | float | List of frequencies.                          |
 | max_freq           | float | Max freq.                                     |
@@ -182,8 +172,46 @@ InverseFourier transform before you perform CWT.
 I think, this ugly class is disgusting.  
 
 By the way, Morlet Wavelet has formula which is Fourier transformed.  
-And so, I think, it may be better to use the formula
-even if you use Morlet Wavelet.
+And so, I think, it may be better to use the formula  
+even if you use Morlet Wavelet.  
+
+# Scalability
+This package is scalable.
+You can inherit nin_wavelets.BaseWavelet class.  
+Then, you can edit these methods.  
+
+- BaseWavelet.wavelet_formula
+- BaseWavelet.trans_wavelet_formula
+- BaseWavelet.peak_freq
+
+At first, you need to overwrite them.
+They needs to written by numpy.
+These methods are used in the class, and bothering procedures are done.
+
 
 # Licence
-This software is released under the MIT License, see LICENSE.txt.
+'This software is released under the MIT License, see LICENSE.txt.'
+I thought so. But, tellilng you my name needs courage.
+I am thinking about it...
+
+# TODO
+
+- Other wavelets
+    + [x] Morse
+    + [x] Morlet
+    + [x] Gabor
+    + [ ] Mexican hat
+    + [ ] Haar
+    + [ ] Scalability for unknown wavelets
+- More methods
+    + [ ] Decimation
+    + [ ] DWT
+    + [ ] 2D wavelet
+    + [ ] Do you need 3D wavelet?
+- [x] Use cuda, cython and speedup!
+    + [x] It was cythonized and may be faster. I think ;)
+    + [ ] I already tried cuda and it was slow...;(
+- [ ] Kill typos(I am a bad male yellow monkey and not good at English) ;(
+- [ ] Licence
+    + [ ] Whether write my name or not.
+    + [ ] Which licence to use(I like MIT)
