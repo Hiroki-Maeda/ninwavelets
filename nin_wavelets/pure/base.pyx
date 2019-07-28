@@ -10,7 +10,7 @@ import cython as c
 DTYPE_COMPLEX = np.complex
 
 
-cdef kill_nyquist(np.ndarray[np.complex128_t, ndim=1]wave):
+cdef kill_nyquist(np.ndarray[np.complex128_t, ndim=1] wave):
     '''
     Kill wave over Nyquist frequency.
     Not a method to kill Mr Nyquist, I am sorry.
@@ -22,7 +22,7 @@ cdef kill_nyquist(np.ndarray[np.complex128_t, ndim=1]wave):
     return wave
 
 
-cdef nin_fft(np.ndarray[np.complex128_t, ndim=1]wave):
+cdef nin_fft(np.ndarray[np.complex128_t, ndim=1] wave):
     '''
     FFT without nyquist freq.
     '''
@@ -66,7 +66,7 @@ cdef class WaveletBase:
         self.real_wave_length: c.float = 1
 
     cdef _setup_base_trans_waveshape(self, freq: c.float,
-                                    real_length: c.float = 1):
+                                     real_length: c.float = 1):
         '''
         Setup wave shape.
         real_length is length of wavelet(for example, sec or msec)
@@ -87,7 +87,7 @@ cdef class WaveletBase:
         return np.arange(0, total, one, dtype=np.float)
 
     cdef _setup_base_waveletshape(self, freq: c.float, real_length: c.float = 1,
-                                 zero_mean: bool = False):
+                                  zero_mean: bool = False):
         '''
         Setup wave shape.
 
@@ -157,7 +157,7 @@ cdef class WaveletBase:
             result = self._normalize(result)
             return result
 
-    def make_fft_wavelets(self, freqs: Iterable) -> Iterator:
+    cpdef make_fft_wavelets(self, np.ndarray freqs):
         ''' Make list of FFTed wavelets.
         Make Fourier transformed wavelet.
 
@@ -225,12 +225,12 @@ cdef class WaveletBase:
             timeline: np.ndarray = self._setup_base_trans_waveshape(freq)
             wave = self.trans_wavelet_formula(timeline)
             wavelet: np.ndarray = ifft(wave)
-            half = int(wavelet.shape[0])
-            band = int(half / 2 / freq * self.length)
-            start: int = half - band if band < half // 2 else half // 2
-            stop: int = half + band if band < half // 2 else half // 2 * 3
-            start: int = half // 2
-            stop: int = half // 2 * 3
+            half: c.int = int(wavelet.shape[0])
+            band: c.int = int(half / 2 / freq * self.length)
+            start: c.int = half - band if band < half // 2 else half // 2
+            stop: c.int = half + band if band < half // 2 else half // 2 * 3
+            start: c.int = half // 2
+            stop: c.int = half // 2 * 3
             # cut side of wavelets and contactnate
             total_wavelet = np.hstack((np.conj(np.flip(wavelet)),
                                        wavelet))
@@ -241,7 +241,7 @@ cdef class WaveletBase:
                                              dtype=np.complex128)
         return self._normalize(wavelet)
 
-    cpdef make_wavelets(self, freqs: Union[List[float], range, np.ndarray]):
+    cpdef make_wavelets(self, np.ndarray[long, ndim=1] freqs):
         '''
         Make wavelets.
         It returnes list of wavelet, and it is compatible with mne-python.
@@ -259,7 +259,7 @@ cdef class WaveletBase:
             self.wavelets.append(self.make_wavelet(freq))
         return self.wavelets
 
-    def cwt(self, wave: np.ndarray,
+    cpdef cwt(self, wave: np.ndarray,
             freqs: Union[List[float], range, np.ndarray],
             max_freq: int = 0,
             kill_nyquist: bool = False):
@@ -278,12 +278,11 @@ cdef class WaveletBase:
         freq_dist: c.int = freqs[1] - freqs[0]
         wave_length: c.int = wave.shape[0]
         self.real_wave_length: c.float = wave.shape[0] / self.sfreq
-        # wavelet_base = np.asarray(self.make_fft_wavelets(freqs), dtype=np.complex128)
         wavelet_base = self.make_fft_wavelets(freqs)
         wavelet = []
         for x in wavelet_base:
             wavelet.append(np.pad(x, [0, wave_length - x.shape[0]], 'constant'))
-        fft_wave = nin_fft(wave2) if kill_nyquist else fft(wave2)
+        fft_wave: complex128_t[:] = nin_fft(wave2) if kill_nyquist else fft(wave2)
         # Keep powerful even if long wave.
         fft_wave *= (wave_length / self.sfreq) ** 0.5
         result_map = []
@@ -330,10 +329,11 @@ cdef class WaveletBase:
         -------
         Fig of matplotlib.
         '''
+        freqs = np.array([freq])
         plt_num = 2
         if self.help == '':
             plt_num = 3
-        wavelet = self.make_wavelets([freq])[0]
+        wavelet = self.make_wavelets(freqs)[0]
         fig = plt.figure(figsize=(6, 8))
         ax = fig.add_subplot(plt_num, 1, 1)
         ax.plot(np.arange(0, wavelet.shape[0], 1),

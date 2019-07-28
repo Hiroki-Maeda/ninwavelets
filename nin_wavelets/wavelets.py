@@ -1,7 +1,6 @@
-from .wavelets import WaveletBase, WaveletMode
+from .base import WaveletBase, WaveletMode
 from typing import Union, List
 import numpy as np
-from mne.time_frequency import tfr
 
 
 class Morse(WaveletBase):
@@ -158,6 +157,7 @@ class MorseMNE(Morse):
             freqs: Union[List[float], range, np.ndarray],
             use_fft: bool = True, mode: str = 'same',
             decim: float = 1) -> np.ndarray:
+        from mne.time_frequency import tfr
         '''
         Run cwt of mne-python.
         Because of use of IFFT before FFT to the same wave,
