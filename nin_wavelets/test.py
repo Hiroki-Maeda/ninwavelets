@@ -24,7 +24,8 @@ def test() -> None:
 def test3d() -> None:
     go = morlet(1000, [10])[0]
     mm = morlet(1000, [10], zero_mean=True)[0]
-    morse = Morse(1000, 17.5, 3).make_wavelets([10])[0]
+    morse_obj = Morse(1000, 17.5, 3)
+    morse = morse_obj.make_wavelets([10])[0]
     nin_morlet = Morlet(1000).make_wavelets([10])[0]
     fig = plt.figure()
     ax = fig.add_subplot(211)
@@ -32,22 +33,22 @@ def test3d() -> None:
     half_mm = mm.shape[0] / 2
     ax.plot(np.arange(-half_morse, half_morse, 1),
             morse,
-            label='morse')
+            label='Morse Wavelet')
     ax.plot(np.arange(-half_morse, half_morse, 1),
             nin_morlet,
-            label='nin_morlet')
+            label='Morlet Wavelet')
     ax.plot(np.arange(-half_morse, half_morse, 1),
             morse.imag,
-            label='morse imag')
+            label='Morse Imag')
     ax.plot(np.arange(-half_mm, half_mm, 1),
             mm,
-            label='morlet')
+            label='Morlet')
     ax.plot(np.arange(-half_mm, half_mm, 1),
             mm.imag,
-            label='morlet imag')
+            label='Morlet imag')
     ax.plot(np.arange(-half_mm, half_mm, 1),
             go,
-            label='go')
+            label='Gabor Wavelet')
     ax1 = fig.add_subplot(212, projection='3d')
     ax1.scatter3D(morse.real,
                   np.arange(-half_morse, half_morse, 1),
@@ -76,9 +77,9 @@ def plot_sin_fft() -> None:
     plt.show()
 
 
-def cwt_test(use_cuda: bool = False) -> None:
+def cwt_test() -> None:
     freq: float = 60
-    length = 3
+    length = 5
     time: np.ndarray = np.arange(0, length, 0.001)
     sin = np.array(np.sin(time * freq * 2 * np.pi) +
                    np.sin(time * 160 * 2 * np.pi) * np.sin(time * np.pi) +
@@ -92,6 +93,7 @@ def cwt_test(use_cuda: bool = False) -> None:
     plt.plot(m[10])
     plt.plot(m[100])
     plt.plot(m[500])
+    plt.plot(m[800])
     plt.plot(np.abs(fft(sin)) / 1000)
     plt.show()
 
@@ -104,21 +106,22 @@ def cwt_test(use_cuda: bool = False) -> None:
     # ax3.invert_yaxis()
 
     morse = Morse()
-    morse.mode = 4
-    morse.use_cuda = use_cuda
     nin_morlet = Morlet()
     nin_morlet.mode = WaveletMode.Both
 
-    p.append(morse.power, sin, np.arange(1., 1000, 1), max_freq=500)
-    p.append(nin_morlet.power, sin, np.arange(1., 1000, 1))
+    p.append(morse.power, sin, np.arange(1., 1000, 1),
+             max_freq=500, kill_nikist=True)
+    p.append(nin_morlet.power, sin, np.arange(1., 1000, 1),
+             kill_nikist=True)
     # p.append(tfr.cwt, np.array([sin]), morlet(1000, np.arange(1, 1000, 1)))
     # p.append(tfr.cwt, np.array([sin]),
     #          nin_morlet.make_wavelets(np.arange(1., 1000, 1)))
     # result_morse, result_morlet, result_mne_morlet = p.run()
     result_morse, result_morlet = p.run()
 
-    ax1.imshow(np.abs(result_morse), cmap='RdBu_r')
-    ax2.imshow(np.abs(result_morlet), cmap='RdBu_r')
+    vmax = 0.2
+    ax1.imshow(np.abs(result_morse), cmap='RdBu_r', vmax=vmax)
+    ax2.imshow(np.abs(result_morlet), cmap='RdBu_r', vmax=vmax)
     # ax2.imshow(nn, cmap='RdBu_r')
     # ax3.imshow(np.abs(result_mne_morlet[0]), cmap='RdBu_r')
     ax1.invert_yaxis()
@@ -147,7 +150,7 @@ def fft_wavelet_test() -> None:
     ax.plot(a, label='FFTed Generalized Morse wavelet')
     ax.plot(b, label='Morlet wavelet')
     ax.plot(b.imag, label='Morlet wavelet')
-    #ax.plot(np.abs(c), label='FFTed Morlet wavelet abs')
+    # ax.plot(np.abs(c), label='FFTed Morlet wavelet abs')
     ax.plot(np.abs(c.real), label='FFTed Morlet wavelet')
     ax.plot(c.imag, label='imag of FFTed Morlet wavelet')
     handler, label = ax.get_legend_handles_labels()
@@ -162,4 +165,4 @@ if __name__ == '__main__':
     # test()
     test3d()
     fft_wavelet_test()
-    cwt_test(False)
+    cwt_test()

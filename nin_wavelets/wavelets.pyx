@@ -53,12 +53,13 @@ cdef class WaveletBase:
         self.use_cuda: c.bool = False
         self.base_freq: c.float = 1
         self.real_wave_length: c.float = 1
-        print('nin_wavelet with cython')
 
     cdef _setup_base_trans_waveshape(self, freq: c.float,
                                     real_length: c.float = 1):
         '''
         Setup wave shape.
+        real_length is length of wavelet(for example, sec or msec)
+        self.real_wave_length is length of wave to analyze.
 
         Parameters
         ----------
@@ -68,10 +69,10 @@ cdef class WaveletBase:
 
         Returns
         -------
-        Tuple[float, float]: (one, total)
+        np.ndarray | Timeline to calculate wavelet.
         '''
         one: c.float = 1 / freq / self.accuracy / real_length
-        total: c.float = self.sfreq / freq / real_length
+        total: c.float = self.sfreq / freq / real_length * self.real_wave_length
         return np.arange(0, total, one, dtype=np.float)
 
     cdef _setup_base_waveletshape(self, freq: c.float, real_length: c.float = 1,
@@ -161,9 +162,7 @@ cdef class WaveletBase:
                                              dtype=np.complex128)
         return self._normalize(wavelet)
 
-    cpdef make_wavelets(self,
-                      freqs: Union[List[float],
-                                   range, np.ndarray]):
+    cpdef make_wavelets(self, freqs: Union[List[float], range, np.ndarray]):
         '''
         Make wavelets.
         It returnes list of wavelet, and it is compatible with mne-python.
@@ -208,16 +207,21 @@ cdef class WaveletBase:
         for x in wavelet_base:
             wavelet.append(np.pad(x, [0, wave_length - x.shape[0]], 'constant'))
         fft_wave = nin_fft(wave2) if kill_nyquist else fft(wave2)
+        # Keep powerful even if long wave.
+        fft_wave *= (wave_length / self.sfreq) ** 0.5
         result_map = []
         for x in wavelet:
             result_map.append(ifft(x * fft_wave))
         if max_freq == 0:
             max_freq = int(self.sfreq / freq_dist)
         result_list = result_map[:max_freq]
+        # reset myself
+        self.real_wave_length = 1.
         return np.array(result_list)
 
     def power(self, wave: np.ndarray,
-              freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
+              freqs: Union[List[float], range, np.ndarray],
+              kill_nyquist: bool = False) -> np.ndarray:
         '''
         Run cwt and compute power.
 
@@ -229,7 +233,7 @@ cdef class WaveletBase:
         -------
         Result of cwt. np.ndarray.
         '''
-        result: np.ndarray[np.complex128_t] = self.cwt(wave, freqs)
+        result: np.ndarray[np.complex128_t] = self.cwt(wave, freqs, kill_nyquist=kill_nyquist)
         return np.abs(result)
 
     def plot(self, freq: float, show: bool = True) -> plt.figure:

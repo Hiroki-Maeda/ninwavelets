@@ -41,7 +41,7 @@ class Parallel:
         self.kwargs: list = []
         self.core = core
 
-    def append(self, *args: tuple, **kwargs: dict) -> 'Parallel':
+    def append(self, *args: Any, **kwargs: Any) -> 'Parallel':
         self.args.append(args)
         self.kwargs.append(kwargs)
         return self
