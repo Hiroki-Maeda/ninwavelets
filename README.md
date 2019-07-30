@@ -2,6 +2,13 @@
 This is a python package to generate 'Generalized Morse Wavelets'(GMW).
 And perform CWT based on GMW.
 
+# Why NinWavelets?
+- Use wavelets which is originally Frourier transformed
+    + Generalized Morse Wavelets, and so on.
+- Skipping FFT when perform CWT
+- Scalable
+
+
 # Install
 ```
 pip install git+https://github.com/uesseu/nin_wavelets
@@ -13,7 +20,6 @@ pip install git+https://github.com/uesseu/nin_wavelets
 These are automatically installed.
 - Scipy
 - numpy
-- cython
 
 Optionally, you can use this.
 - mne
@@ -22,7 +28,8 @@ Optionally, you can use this.
 pip install mne
 ```
 
-At first, it was written for mne python, but using mne function is ugly way.  
+At first, it was written for mne python.  
+but using mne function with this package is ugly way.  
 (Because it needs inverse Fourier transform to no purpose.)  
 Now it has own CWT method.  
 It is brand new project, and under heavily development.  
@@ -190,8 +197,8 @@ These methods are used in the class, and bothering procedures are done.
 
 
 # Licence
-'This software is released under the MIT License, see LICENSE.txt.'
-I thought so. But, tellilng you my name needs courage.
+'This software is released under the MIT License, see LICENSE.txt.'  
+I thought so. But, tellilng you my name needs courage.  
 I am thinking about it...
 
 # TODO
@@ -207,9 +214,8 @@ I am thinking about it...
     + [ ] Decimation
     + [ ] DWT
     + [ ] 2D wavelet
-    + [ ] Do you need 3D wavelet?
-- [x] Use cuda, cython and speedup!
-    + [x] It was cythonized and may be faster. I think ;)
+- [ ] Use cuda, cython and speedup!
+    + [ ] It was cythonized before, but not very fast. Now, it is pure python.
     + [ ] I already tried cuda and it was slow...;(
 - [ ] Kill typos(I am a bad male yellow monkey and not good at English) ;(
 - [ ] Licence
