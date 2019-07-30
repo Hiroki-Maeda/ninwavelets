@@ -1,12 +1,12 @@
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-from scipy.fftpack import ifft, fft
-from typing import Union, List, Tuple
-from mne.time_frequency import tfr, morlet
+from scipy.fftpack import fft
+from mne.time_frequency import morlet
 from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode
-
 from .tooltip import Parallel
+from time import time
+import gc
 
 
 def test() -> None:
@@ -119,7 +119,7 @@ def cwt_test() -> None:
     # result_morse, result_morlet, result_mne_morlet = p.run()
     result_morse, result_morlet = p.run()
 
-    vmax = 0.2
+    vmax = 0.03
     ax1.imshow(np.abs(result_morse), cmap='RdBu_r', vmax=vmax)
     ax2.imshow(np.abs(result_morlet), cmap='RdBu_r', vmax=vmax)
     # ax2.imshow(nn, cmap='RdBu_r')
@@ -158,6 +158,25 @@ def fft_wavelet_test() -> None:
     plt.show()
 
 
+def speed_test() -> None:
+    freq: float = 60
+    length = 2
+    t: np.ndarray = np.arange(0, length, 0.001)
+    sin = np.array(np.sin(t * freq * 2 * np.pi) +
+                   np.sin(t * 160 * 2 * np.pi) * np.sin(t * np.pi) +
+                   np.sin(np.pad(np.arange(0, length / 2, 0.001),
+                                 [int(length * 250), int(length * 250)],
+                                 'constant') *
+                          300 * 2 * np.pi)
+                   )
+    morse = Morse()
+    print(time())
+    tmp_t = time()
+    morse.power(sin, np.arange(1., 1000, 1))
+    print(time() - tmp_t)
+    gc.collect()
+
+
 if __name__ == '__main__':
     # enable_cupy()
     print('Test Run')
@@ -166,3 +185,4 @@ if __name__ == '__main__':
     test3d()
     fft_wavelet_test()
     cwt_test()
+    speed_test()

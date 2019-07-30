@@ -63,7 +63,7 @@ class WaveletBase:
         self.real_wave_length: float = 1
 
     def _setup_base_trans_waveshape(self, freq: float,
-                                     real_length: float = 1) -> np.ndarray:
+                                    real_length: float = 1) -> np.ndarray:
         '''
         Setup wave shape.
         real_length is length of wavelet(for example, sec or msec)
@@ -278,7 +278,7 @@ class WaveletBase:
         wavelet = []
         for x in wavelet_base:
             wavelet.append(np.pad(x, [0, wave_length - x.shape[0]], 'constant'))
-        fft_wave: complex128_t[:] = nin_fft(wave2) if kill_nyquist else fft(wave2)
+        fft_wave: np.ndarray[np.complex128] = nin_fft(wave2) if kill_nyquist else fft(wave2)
         # Keep powerful even if long wave.
         fft_wave *= (wave_length / self.sfreq) ** 0.5
         result_map = []
@@ -309,7 +309,28 @@ class WaveletBase:
         -------
         Result of cwt. np.ndarray.
         '''
-        result  = self.cwt(wave, freqs, kill_nyquist=kill_nyquist)
+        result = self.cwt(wave, freqs, kill_nyquist=kill_nyquist)
+        return np.abs(result) ** 2
+
+    def abs(self, wave: np.ndarray,
+            freqs: Union[List[float], range, np.ndarray],
+            kill_nyquist: bool = False) -> np.ndarray:
+        '''
+        Run cwt and compute power.
+
+        Parameters
+        ----------
+        wave: np.ndarray| Wave to analyze
+        freqs: float | Frequencies. Before use this, please run plot.
+        kill_nyquist: bool|
+            Kill frequencies over Nyquist frequency.
+            I do not mean kill Dr. Nyquist.
+
+        Returns
+        -------
+        Result of cwt. np.ndarray.
+        '''
+        result = self.cwt(wave, freqs, kill_nyquist=kill_nyquist)
         return np.abs(result)
 
     def plot(self, freq: float, show: bool = True) -> plt.figure:
