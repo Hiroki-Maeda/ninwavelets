@@ -42,13 +42,12 @@ class Morse(WaveletBase):
     '''
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
-                 length: float = 10, accuracy: float = 1) -> None:
-        super(Morse, self).__init__(sfreq)
+                 accuracy: float = 1, real_wave_length: float = 1.,
+                 interpolate: bool = False) -> None:
+        super(Morse, self).__init__(sfreq, accuracy,
+                                    real_wave_length, interpolate)
         self.r: float = r
         self.b: float = b
-        self.length: float = length
-        self.accuracy: float = accuracy
-        self.sfreq: float = sfreq
         self.mode = WaveletMode.Reverse
         self.help = '''This is inverse Fourier transformed MorseWavelet.
                     Originally, Generalized Morse wavelet is
@@ -112,14 +111,13 @@ class Morlet(WaveletBase):
     As constructor, Morse instance its self.
     '''
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
-                 accuracy: float = 1.) -> None:
-        super(Morlet, self).__init__(sfreq)
+                 accuracy: float = 1., real_wave_length: float = 1.,
+                 interpolate: bool = False) -> None:
+        super(Morlet, self).__init__(sfreq, accuracy,
+                                     real_wave_length, interpolate)
         self.mode = WaveletMode.Normal
         # self.mode = WaveletMode.Both
-        self.length = 10
-        self.sfreq = sfreq
         self.sigma = sigma
-        self.accuracy = accuracy
         self.c = (1 + np.e ** (-self.sigma ** 2 / 2) -
                   2 * np.e ** (-3 / 4 * self.sigma ** 2)) ** (-1/2)
         self.k = np.e ** (-self.sigma ** 2 / 2)
@@ -150,8 +148,24 @@ class MorseMNE(Morse):
     '''
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
-                 length: float = 10, accuracy: float = 1) -> None:
-        super(MorseMNE, self).__init__(sfreq, b, r, length, accuracy)
+                 accuracy: float = 1., real_wave_length: float = 1.,
+                 interpolate: bool = False) -> None:
+        super(MorseMNE, self).__init__(sfreq, accuracy,
+                                       real_wave_length, interpolate)
+        self.r: float = r
+        self.b: float = b
+        self.mode = WaveletMode.Reverse
+        self.help = '''This is inverse Fourier transformed MorseWavelet.
+                    Originally, Generalized Morse wavelet is
+                    Frourier transformed wave.
+                    It should be used as it is Fourier transformed data.
+                    But, you can use it in the same way as'
+                    MorletWavelet by IFFT.
+                    If wave continues to side of the window, wave is bad.
+                    Please set larger value to param
+                    accuracy" and "length"
+                    It becomes bad easily when frequency is low.'''
+
 
     def cwt(self, wave: np.ndarray,
             freqs: Union[List[float], range, np.ndarray],
@@ -175,3 +189,23 @@ class MorseMNE(Morse):
                        list(self.make_wavelets(range(1, 100))),
                        use_fft=use_fft,
                        mode=mode, decim=decim).mean(axis=0)
+
+
+class Haar(WaveletBase):
+    def __init__(self, sfreq: float = 1000,
+                 accuracy: float = 1., real_wave_length: float = 1.,
+                 interpolate: bool = False) -> None:
+        super(Haar, self).__init__(sfreq, accuracy,
+                                   real_wave_length, interpolate)
+        self.mode = WaveletMode.Normal
+
+    def wavelet_formula(self, timeline: np.ndarray,
+                        freq: float = 1) -> np.ndarray:
+        for key, value in enumerate(timeline):
+            if (0. < value) and (value <= 1.):
+                timeline[key] = 1.
+            elif (-1. < value) and (value <= 0.):
+                timeline[key] = -1.
+            else:
+                timeline[key] = 0.
+        return timeline

@@ -53,6 +53,37 @@ plt.show()
 
 
 # Reference
+## WaveletBase Class
+Super class of wavelets.
+You can inherit this class and make new wavelets.
+
+After inherit this, you can edit these methods.  
+
+- BaseWavelet.wavelet_formula
+- BaseWavelet.trans_wavelet_formula
+- BaseWavelet.peak_freq
+
+At first, you need to overwrite them.
+They needs to written by numpy.
+These methods are used in the class,
+and bothering procedures are done.
+
+## Way to use init
+
+This is an example.
+```python
+def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
+             accuracy: float = 1, real_wave_length: float = 1.,
+             interpolate: bool = False) -> None:
+    super(Morse, self).__init__(sfreq, accuracy,
+                                real_wave_length, interpolate)
+    self.r: float = r
+    self.b: float = b
+    self.mode = WaveletMode.Reverse
+```
+
+
+
 ## Morse Class
 This is a class to GMW.
 
@@ -123,7 +154,6 @@ CWT method.
 | wave               | float | Wave drawed by numpy.                         |
 | freqs              | float | List of frequencies.                          |
 | max_freq           | float | Max freq.                                     |
-| kill_nikist(False) | bool  | Whether kill nikist freqs of wave to analyze. |
 
 ```python
 def cwt(self, wave: np.ndarray,
@@ -160,7 +190,6 @@ Run cwt of mne-python, and compute power.
 | wave               | float | Wave drawed by numpy.                         |
 | freqs              | float | List of frequencies.                          |
 | max_freq           | float | Max freq.                                     |
-| kill_nikist(False) | bool  | Whether kill nikist freqs of wave to analyze. |
 
 Returns  
 Result of cwt. np.ndarray.  
@@ -181,19 +210,6 @@ I think, this ugly class is disgusting.
 By the way, Morlet Wavelet has formula which is Fourier transformed.  
 And so, I think, it may be better to use the formula  
 even if you use Morlet Wavelet.  
-
-# Scalability
-This package is scalable.
-You can inherit nin_wavelets.BaseWavelet class.  
-Then, you can edit these methods.  
-
-- BaseWavelet.wavelet_formula
-- BaseWavelet.trans_wavelet_formula
-- BaseWavelet.peak_freq
-
-At first, you need to overwrite them.
-They needs to written by numpy.
-These methods are used in the class, and bothering procedures are done.
 
 
 # Licence

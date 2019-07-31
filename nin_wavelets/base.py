@@ -7,7 +7,7 @@ from typing import Union, List, Tuple, Iterator, Iterable
 from enum import Enum
 
 
-def kill_nyquist(wave: np.ndarray) -> np.ndarray:
+def interpolate_alias(wave: np.ndarray) -> np.ndarray:
     '''
     Kill wave over Nyquist frequency.
     Not a method to kill Mr Nyquist, I am sorry.
@@ -21,9 +21,9 @@ def kill_nyquist(wave: np.ndarray) -> np.ndarray:
 
 def nin_fft(wave: np.ndarray) -> np.ndarray:
     '''
-    FFT without nyquist freq.
+    FFT interpolate nyquist freq.
     '''
-    return kill_nyquist(fft(wave))
+    return interpolate_alias(fft(wave))
 
 
 class WaveletMode(Enum):
@@ -52,15 +52,27 @@ class WaveletBase:
     self._make_fft_wavelet : returns np.ndarray
     self.make_wavelet : returns np.ndarray
     '''
-    def __init__(self, sfreq: float) -> None:
+    def __init__(self, sfreq: float, accuracy: float = 1.,
+                 real_wave_length: float = 1.,
+                 interpolate: bool = False) -> None:
+        '''
+        Parameters
+        ----------
+        sfreq: float|
+            Sampling frequency.
+        accuracy: float|
+            This value affects only when you plot the wavelet or
+            you make wavelet in depricated way.
+        real_wave_length: float|
+            Length of wavelet. When this class run cwt,
+            this will be automatically changed.
+        '''
         self.mode = WaveletMode.Normal
-        self.accuracy: float = 1
+        self.accuracy = accuracy
         self.sfreq = sfreq
-        self.length: float = 10
-        self.help: str = ''
-        self.use_cuda: bool = False
-        self.base_freq: float = 1
-        self.real_wave_length: float = 1
+        self.help = ''
+        self.real_wave_length = real_wave_length
+        self.interpolate = interpolate
 
     def _setup_base_trans_waveshape(self, freq: float,
                                     real_length: float = 1) -> np.ndarray:
@@ -84,7 +96,7 @@ class WaveletBase:
         return np.arange(0, total, one, dtype=np.float)
 
     def _setup_base_waveletshape(self, freq: float, real_length: float = 1,
-                                  zero_mean: bool = False) -> np.ndarray:
+                                 zero_mean: bool = False) -> np.ndarray:
         '''
         Setup wave shape.
 
@@ -107,7 +119,7 @@ class WaveletBase:
     def peak_freq(self, freq: float) -> float:
         return 1.
 
-    def _normalize(self, wave) -> np.ndarray:
+    def _normalize(self, wave: np.ndarray) -> np.ndarray:
         ''' Normalize norm of complex array
 
         Parameters
@@ -137,6 +149,7 @@ class WaveletBase:
             timeline = self._setup_base_trans_waveshape(self.real_wave_length)
             result = np.asarray(self.trans_wavelet_formula(timeline, freq),
                                 dtype=np.complex128)
+            result = interpolate_alias(result) if self.interpolate else result
             return self._normalize(result)
         else:
             wavelet = self.make_wavelet(freq)
@@ -151,10 +164,13 @@ class WaveletBase:
             result = fft(wavelet) / self.sfreq
             result.imag = np.abs(result.imag)
             result.real = np.abs(result.real)
+            result = interpolate_alias(result) if self.interpolate else result
             result = self._normalize(result)
             return result
 
-    def make_fft_wavelets(self, freqs) -> List[np.ndarray]:
+    def make_fft_wavelets(self, freqs: Union[List,
+                                             np.ndarray,
+                                             range]) -> List[np.ndarray]:
         ''' Make list of FFTed wavelets.
         Make Fourier transformed wavelet.
 
@@ -166,12 +182,10 @@ class WaveletBase:
         -------
         np.ndarray[np.complex128, ndim=1]: FFTed Wavelet.
         '''
-        self.fft_wavelets = []
-        for x in freqs:
-            self.fft_wavelets.append(self.make_fft_wavelet(x))
+        self.fft_wavelets = list(map(self.make_fft_wavelet, freqs))
         return self.fft_wavelets
 
-    def wavelet_formula(self, timeline, freq: float) -> np.ndarray:
+    def wavelet_formula(self, timeline: np.ndarray, freq: float) -> np.ndarray:
         ''' wavelet_formula
         The formula of Wavelet.
         Other procedures are performed by other methods.
@@ -188,12 +202,13 @@ class WaveletBase:
         -------
         Base of wavelet.
             timeline: np.ndarray:
-            
+
         freq: float:
         '''
         return timeline
 
-    def trans_wavelet_formula(self, freqs, freq: float = 1.) -> np.ndarray:
+    def trans_wavelet_formula(self, freqs: Iterator[float],
+                              freq: float = 1.) -> np.ndarray:
         ''' trans_wavelet_formula
         The formula of Fourier Transformed Wavelet.
         Other procedures are performed by other methods.
@@ -211,7 +226,7 @@ class WaveletBase:
         -------
         Base of wavelet.
             freqs: np.ndarray:
-            
+
         freq: float:
         '''
         return freqs
@@ -222,22 +237,22 @@ class WaveletBase:
             wave = self.trans_wavelet_formula(timeline)
             wavelet: np.ndarray = ifft(wave)
             half: int = int(wavelet.shape[0])
-            band: int = int(half / 2 / freq * self.length)
-            start: int = half - band if band < half // 2 else half // 2
-            stop: int = half + band if band < half // 2 else half // 2 * 3
+            # start: int = half - band if band < half // 2 else half // 2
+            # stop: int = half + band if band < half // 2 else half // 2 * 3
             start: int = half // 2
             stop: int = half // 2 * 3
             # cut side of wavelets and contactnate
             total_wavelet = np.hstack((np.conj(np.flip(wavelet)),
                                        wavelet))
-            wavelet: np.ndarray = total_wavelet[start: stop]
+            wavelet = total_wavelet[start: stop]
         else:
-            timeline: np.ndarray = self._setup_base_waveletshape(freq, 1, zero_mean=True)
-            wavelet: np.ndarray = np.asarray(self.wavelet_formula(timeline, freq),
-                                             dtype=np.complex128)
+            timeline = self._setup_base_waveletshape(freq, 1, zero_mean=True)
+            wavelet = np.asarray(self.wavelet_formula(timeline, freq),
+                                 dtype=np.complex128)
         return self._normalize(wavelet)
 
-    def make_wavelets(self,  freqs) -> np.ndarray:
+    def make_wavelets(self,  freqs: Union[np.ndarray,
+                                          List[float], range]) -> np.ndarray:
         '''
         Make wavelets.
         It returnes list of wavelet, and it is compatible with mne-python.
@@ -250,15 +265,12 @@ class WaveletBase:
         -------
         MorseWavelet: np.ndarray
         '''
-        self.wavelets: list = []
-        for freq in freqs:
-            self.wavelets.append(self.make_wavelet(freq))
+        self.wavelets = list(map(self.make_wavelet, freqs))
         return self.wavelets
 
     def cwt(self, wave: np.ndarray,
             freqs: Union[List[float], range, np.ndarray],
-            max_freq: int = 0,
-            kill_nyquist: bool = False) -> np.ndarray:
+            max_freq: int = 0) -> np.ndarray:
         '''cwt
         Run CWT.
 
@@ -266,34 +278,31 @@ class WaveletBase:
         freqs: Union[List[float], range, np.ndarray]|
             Frequencies
         max_freq: int| Max Frequency
-        kill_nyquist: bool|
-            Kill frequencies over Nyquist frequency.
-            I do not mean kill Dr. Nyquist.
         '''
-        wave2: np.ndarray = wave
-        freq_dist: int = freqs[1] - freqs[0]
+        freq_dist: float = freqs[1] - freqs[0]
         wave_length: int = wave.shape[0]
         self.real_wave_length: float = wave.shape[0] / self.sfreq
         wavelet_base = self.make_fft_wavelets(freqs)
-        wavelet = []
-        for x in wavelet_base:
-            wavelet.append(np.pad(x, [0, wave_length - x.shape[0]], 'constant'))
-        fft_wave: np.ndarray[np.complex128] = nin_fft(wave2) if kill_nyquist else fft(wave2)
+        wavelet = map(lambda x: np.pad(x, [0, wave_length - x.shape[0]],
+                                       'constant'),
+                      wavelet_base)
+        fft_wave = fft(wave)
+        if self.interpolate:
+            fft_wave = interpolate_alias(fft_wave) / 2
+        else:
+            fft_wave
         # Keep powerful even if long wave.
         fft_wave *= (wave_length / self.sfreq) ** 0.5
-        result_map = []
-        for x in wavelet:
-            result_map.append(ifft(x * fft_wave))
+        result_map = map(lambda x: ifft(x * fft_wave), wavelet)
         if max_freq == 0:
             max_freq = int(self.sfreq / freq_dist)
-        result_list = result_map[:max_freq]
+        result_list = list(result_map)[:max_freq]
         # reset myself
         self.real_wave_length = 1.
         return np.array(result_list)
 
     def power(self, wave: np.ndarray,
-              freqs: Union[List[float], range, np.ndarray],
-              kill_nyquist: bool = False) -> np.ndarray:
+              freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
         '''
         Run cwt and compute power.
 
@@ -301,20 +310,16 @@ class WaveletBase:
         ----------
         wave: np.ndarray| Wave to analyze
         freqs: float | Frequencies. Before use this, please run plot.
-        kill_nyquist: bool|
-            Kill frequencies over Nyquist frequency.
-            I do not mean kill Dr. Nyquist.
 
         Returns
         -------
         Result of cwt. np.ndarray.
         '''
-        result = self.cwt(wave, freqs, kill_nyquist=kill_nyquist)
+        result = self.cwt(wave, freqs)
         return np.abs(result) ** 2
 
     def abs(self, wave: np.ndarray,
-            freqs: Union[List[float], range, np.ndarray],
-            kill_nyquist: bool = False) -> np.ndarray:
+            freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
         '''
         Run cwt and compute power.
 
@@ -322,15 +327,12 @@ class WaveletBase:
         ----------
         wave: np.ndarray| Wave to analyze
         freqs: float | Frequencies. Before use this, please run plot.
-        kill_nyquist: bool|
-            Kill frequencies over Nyquist frequency.
-            I do not mean kill Dr. Nyquist.
 
         Returns
         -------
         Result of cwt. np.ndarray.
         '''
-        result = self.cwt(wave, freqs, kill_nyquist=kill_nyquist)
+        result = self.cwt(wave, freqs)
         return np.abs(result)
 
     def plot(self, freq: float, show: bool = True) -> plt.figure:
