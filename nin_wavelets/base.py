@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
 from typing import Union, List, Tuple, Iterator, Iterable
 from enum import Enum
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+
+Numbers = Union[List[float], np.ndarray, range]
 
 
 def interpolate_alias(wave: np.ndarray) -> np.ndarray:
@@ -17,13 +21,6 @@ def interpolate_alias(wave: np.ndarray) -> np.ndarray:
                   [0, wave.shape[0] - half_size],
                   'constant', constant_values=0)
     return wave * 2
-
-
-def nin_fft(wave: np.ndarray) -> np.ndarray:
-    '''
-    FFT interpolate nyquist freq.
-    '''
-    return interpolate_alias(fft(wave))
 
 
 class WaveletMode(Enum):
@@ -52,7 +49,7 @@ class WaveletBase:
     self._make_fft_wavelet : returns np.ndarray
     self.make_wavelet : returns np.ndarray
     '''
-    def __init__(self, sfreq: float, accuracy: float = 1.,
+    def __init__(self, sfreq: float = 1000, accuracy: float = 1.,
                  real_wave_length: float = 1.,
                  interpolate: bool = False) -> None:
         '''
@@ -155,7 +152,7 @@ class WaveletBase:
             wavelet = self.make_wavelet(freq)
             wavelet = wavelet.astype(np.complex128)
             half = int((self.sfreq *
-                        self.real_wave_length - wavelet.shape[0]) / 2),
+                        self.real_wave_length - wavelet.shape[0]) / 2)
 
             wavelet = np.hstack((np.zeros(half, dtype=np.complex128),
                                  wavelet,
@@ -168,9 +165,7 @@ class WaveletBase:
             result = self._normalize(result)
             return result
 
-    def make_fft_wavelets(self, freqs: Union[List,
-                                             np.ndarray,
-                                             range]) -> List[np.ndarray]:
+    def make_fft_wavelets(self, freqs: Numbers) -> List[np.ndarray]:
         ''' Make list of FFTed wavelets.
         Make Fourier transformed wavelet.
 
@@ -251,8 +246,7 @@ class WaveletBase:
                                  dtype=np.complex128)
         return self._normalize(wavelet)
 
-    def make_wavelets(self,  freqs: Union[np.ndarray,
-                                          List[float], range]) -> np.ndarray:
+    def make_wavelets(self,  freqs: Numbers) -> np.ndarray:
         '''
         Make wavelets.
         It returnes list of wavelet, and it is compatible with mne-python.
@@ -269,7 +263,7 @@ class WaveletBase:
         return self.wavelets
 
     def cwt(self, wave: np.ndarray,
-            freqs: Union[List[float], range, np.ndarray],
+            freqs: Numbers,
             max_freq: int = 0) -> np.ndarray:
         '''cwt
         Run CWT.
@@ -279,6 +273,9 @@ class WaveletBase:
             Frequencies
         max_freq: int| Max Frequency
         '''
+        # =====================================
+        # This section should be cut
+        # =====================================
         freq_dist: float = freqs[1] - freqs[0]
         wave_length: int = wave.shape[0]
         self.real_wave_length: float = wave.shape[0] / self.sfreq
@@ -286,6 +283,7 @@ class WaveletBase:
         wavelet = map(lambda x: np.pad(x, [0, wave_length - x.shape[0]],
                                        'constant'),
                       wavelet_base)
+        # =====================================
         fft_wave = fft(wave)
         if self.interpolate:
             fft_wave = interpolate_alias(fft_wave) / 2
@@ -301,8 +299,7 @@ class WaveletBase:
         self.real_wave_length = 1.
         return np.array(result_list)
 
-    def power(self, wave: np.ndarray,
-              freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
+    def power(self, wave: np.ndarray, freqs: Numbers) -> np.ndarray:
         '''
         Run cwt and compute power.
 
@@ -319,7 +316,7 @@ class WaveletBase:
         return np.abs(result) ** 2
 
     def abs(self, wave: np.ndarray,
-            freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
+            freqs: Numbers) -> np.ndarray:
         '''
         Run cwt and compute power.
 
@@ -349,9 +346,7 @@ class WaveletBase:
         Fig of matplotlib.
         '''
         freqs = np.array([freq])
-        plt_num = 2
-        if self.help == '':
-            plt_num = 3
+        plt_num = 3 if self.help else 2
         wavelet = self.make_wavelets(freqs)[0]
         fig = plt.figure(figsize=(6, 8))
         ax = fig.add_subplot(plt_num, 1, 1)
@@ -379,4 +374,26 @@ class WaveletBase:
         if show:
             plt.show()
         return fig
+
+
+def plot_tf(data, vmin: float = None, vmax: float = None,
+            cmap: str = 'RdBu_r', show: bool = True) -> plt.Axes:
+    '''
+    Plot by matplotlib.
+    vrange: Tuple[float, float]|
+        This is range of color.
+        Same as tuple of vmin and vmax of matplotlib.
+    '''
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.set_aspect('auto')
+    image = ax.imshow(data, vmin=vmin, vmax=vmax, cmap=cmap)
+    ax.invert_yaxis()
+    divider = make_axes_locatable(ax)
+    ax_cb = divider.new_horizontal(size="2%", pad=0.05)
+    fig.add_axes(ax_cb)
+    plt.colorbar(image, cax=ax_cb)
+    if show:
+        plt.show()
+    return ax
 

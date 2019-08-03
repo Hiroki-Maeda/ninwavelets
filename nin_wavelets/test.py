@@ -4,10 +4,22 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft
 from mne.time_frequency import morlet
 from nin_wavelets.base import interpolate_alias
-from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar
+from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf
 from .tooltip import Parallel
-from time import time
 import gc
+
+
+def make_example(length: float = 3) -> np.ndarray:
+    freq: float = 60
+    time: np.ndarray = np.arange(0, length, 0.001)
+    sin = np.array(np.sin(time * freq * 2 * np.pi) +
+                   np.sin(time * 160 * 2 * np.pi) * np.sin(time * np.pi) +
+                   np.sin(np.pad(np.arange(0, length / 2, 0.001),
+                                 [int(length * 250), int(length * 250)],
+                                 'constant') *
+                          300 * 2 * np.pi)
+                   )
+    return sin
 
 
 def test() -> None:
@@ -84,57 +96,30 @@ def plot_sin_fft() -> None:
     plt.show()
 
 
-def cwt_test(interpolate=True) -> None:
-    freq: float = 60
-    length = 5
-    time: np.ndarray = np.arange(0, length, 0.001)
-    sin = np.array(np.sin(time * freq * 2 * np.pi) +
-                   np.sin(time * 160 * 2 * np.pi) * np.sin(time * np.pi) +
-                   np.sin(np.pad(np.arange(0, length / 2, 0.001),
-                                 [int(length * 250), int(length * 250)],
-                                 'constant') *
-                          300 * 2 * np.pi)
-                   )
-    m = list(Morse(interpolate=interpolate).make_fft_wavelets(range(1, 1000)))
-    plt.plot(sin)
-    plt.plot(m[10])
-    plt.plot(m[100])
-    plt.plot(m[500])
-    plt.plot(m[800])
-    plt.plot(np.abs(fft(sin)) / 1000)
-    plt.show()
-
-    p = Parallel(3)
+def cwt_test(interpolate: bool = True) -> None:
+    sin = make_example(3)
+    p = Parallel(2)
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2)
-    # ax3 = plt.subplot(3, 1, 3)
     ax1.invert_yaxis()
     ax2.invert_yaxis()
-    # ax3.invert_yaxis()
 
     morse = Morse(interpolate=True)
     nin_morlet = Morlet()
     nin_morlet.mode = WaveletMode.Both
 
-    p.append(morse.power, sin, np.arange(1., 1000, 1),
+    p.append(morse.power, sin, np.arange(1., 500, 1),
              max_freq=500)
     p.append(nin_morlet.power, sin, np.arange(1., 1000, 1))
-    # p.append(tfr.cwt, np.array([sin]), morlet(1000, np.arange(1, 1000, 1)))
-    # p.append(tfr.cwt, np.array([sin]),
-    #          nin_morlet.make_wavelets(np.arange(1., 1000, 1)))
-    # result_morse, result_morlet, result_mne_morlet = p.run()
     result_morse, result_morlet = p.run()
 
     vmax = 0.03
     ax1.imshow(np.abs(result_morse), cmap='RdBu_r', vmax=vmax)
     ax2.imshow(np.abs(result_morlet), cmap='RdBu_r', vmax=vmax)
-    # ax2.imshow(nn, cmap='RdBu_r')
-    # ax3.imshow(np.abs(result_mne_morlet[0]), cmap='RdBu_r')
     ax1.invert_yaxis()
     ax2.invert_yaxis()
-    # ax3.invert_yaxis()
     plt.show()
-
+    plot_tf(result_morse)
 
 
 def fft_wavelet_test() -> None:
@@ -164,31 +149,12 @@ def fft_wavelet_test() -> None:
     plt.show()
 
 
-def speed_test() -> None:
-    freq: float = 60
-    length = 2
-    t: np.ndarray = np.arange(0, length, 0.001)
-    sin = np.array(np.sin(t * freq * 2 * np.pi) +
-                   np.sin(t * 160 * 2 * np.pi) * np.sin(t * np.pi) +
-                   np.sin(np.pad(np.arange(0, length / 2, 0.001),
-                                 [int(length * 250), int(length * 250)],
-                                 'constant') *
-                          300 * 2 * np.pi)
-                   )
-    morse = Morse()
-    print(time())
-    tmp_t = time()
-    morse.power(sin, np.arange(1., 1000, 1))
-    print(time() - tmp_t)
-    gc.collect()
-
 
 if __name__ == '__main__':
     # enable_cupy()
     print('Test Run')
-    plot_sin_fft()
-    test()
+    # plot_sin_fft()
+    # test()
     # test3d()
     # fft_wavelet_test()
     cwt_test()
-    # speed_test()
