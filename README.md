@@ -68,7 +68,7 @@ They needs to written by numpy.
 These methods are used in the class,
 and bothering procedures are done.
 
-## Way to use init
+## Way to inherit
 
 This is an example.
 ```python
@@ -194,7 +194,7 @@ Run cwt of mne-python, and compute power.
 Returns  
 Result of cwt. np.ndarray.  
 
-## MorseMNE Class
+## MorseMNE Class(Bad way)
 MorseMNE class to use function of MNE-python,  
 which is Great package to analyze EEG/MEG.  
 It is same as Morse class except cwt but  
@@ -207,9 +207,28 @@ Basically, GMW is a wavelet which is originally
 InverseFourier transform before you perform CWT.  
 I think, this ugly class is disgusting.  
 
-By the way, Morlet Wavelet has formula which is Fourier transformed.  
+By the way, there is a formula of Morlet wavelet which is Fourier transformed.  
 And so, I think, it may be better to use the formula  
 even if you use Morlet Wavelet.  
+
+## NinWavelets for MNE
+nin_wavelets.EpochsWavelet is a class for Epochs class of mne.
+
+'''python
+from nin_wavelets import EpochsWavelet, Morse, plot_tf
+from mne import read_epochs
+
+fname = 'hoge_epo.fif'
+epochs = read_epochs(fname)
+morse = Morse()
+result = EpochsWavelet(epochs, morse).power(range(1, 100))
+plot_tf(result)
+'''
+
+At first, make instance of wavelets(Morse, Morlet and so on).
+Then, make EpochsWavelet class.
+This has methods named cwt, power and itc.
+plot_tf is a function to plot numpy array.
 
 
 # Licence
