@@ -112,7 +112,7 @@ class Morlet(WaveletBase):
     '''
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
                  accuracy: float = 1., real_wave_length: float = 1.,
-                 interpolate: bool = False) -> None:
+                 interpolate: bool = False, gabor: bool = False) -> None:
         super(Morlet, self).__init__(sfreq, accuracy,
                                      real_wave_length, interpolate)
         self.mode = WaveletMode.Normal
@@ -120,7 +120,7 @@ class Morlet(WaveletBase):
         self.sigma = sigma
         self.c = (1 + np.e ** (-self.sigma ** 2 / 2) -
                   2 * np.e ** (-3 / 4 * self.sigma ** 2)) ** (-1/2)
-        self.k = np.e ** (-self.sigma ** 2 / 2)
+        self.k = 0 if gabor else np.e ** (-self.sigma ** 2 / 2)
 
     def trans_wavelet_formula(self, freqs: np.ndarray,
                               freq: float = 1) -> np.ndarray:
@@ -133,7 +133,7 @@ class Morlet(WaveletBase):
                         freq: float = 1) -> np.ndarray:
         return (self.c * np.pi ** (-1 / 4)
                 * np.e ** (-timeline ** 2 / 2)
-                * (np.e ** (self.sigma * 1j * timeline - self.k)))
+                * (np.e ** (self.sigma * 1j * timeline) - self.k))
 
     def peak_freq(self, freq: float) -> float:
         return self.sigma / (1. - np.e ** (-self.sigma * freq))

@@ -1,4 +1,3 @@
-from Cython.Build import cythonize
 from numpy import get_include
 from setuptools import setup, find_packages
 

@@ -104,12 +104,11 @@ def cwt_test(interpolate: bool = True) -> None:
     ax1.invert_yaxis()
     ax2.invert_yaxis()
 
-    morse = Morse(interpolate=True)
+    morse = Morse()
     nin_morlet = Morlet()
     nin_morlet.mode = WaveletMode.Both
 
-    p.append(morse.power, sin, np.arange(1., 500, 1),
-             max_freq=500)
+    p.append(morse.power, sin, np.arange(1., 1000, 1))
     p.append(nin_morlet.power, sin, np.arange(1., 1000, 1))
     result_morse, result_morlet = p.run()
 
@@ -118,6 +117,8 @@ def cwt_test(interpolate: bool = True) -> None:
     ax2.imshow(np.abs(result_morlet), cmap='RdBu_r', vmax=vmax)
     ax1.invert_yaxis()
     ax2.invert_yaxis()
+    ax1.set_title('Morse')
+    ax2.set_title('Morlet')
     plt.show()
     plot_tf(result_morse)
 
@@ -155,6 +156,6 @@ if __name__ == '__main__':
     print('Test Run')
     # plot_sin_fft()
     # test()
-    # test3d()
+    test3d()
     # fft_wavelet_test()
     cwt_test()
