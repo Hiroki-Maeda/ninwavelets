@@ -1,12 +1,13 @@
 # NinWavelets
-This is a python package to generate 'Generalized Morse Wavelets'(GMW).
-And perform CWT based on GMW.
+This is a python package for wavelet transform.
+Generalized Morse(GMW), Morlet and so on.
+It can also perform CWT based on GMW.
 
 # Why NinWavelets?
 - Use wavelets which is originally Frourier transformed
     + Generalized Morse Wavelets, and so on.
-- Skipping FFT when perform CWT
-- Scalable
+- Skipping one FFT when performing CWT.
+- Scalable(?)
 
 
 # Install
@@ -39,17 +40,42 @@ Destructive changes may be made.
 # Exsample
 GMW is similar to morlet wavelet, if you use default param.
 
+You can calculate power.
 ```
 morse = Morse(1000, gamma=3, beta=17.5)
 freq = 60
 time = np.arange(0, 0.3, 0.001)
 sin = np.array([np.sin(time * freq * 2 * np.pi)])
+
 result = morse.power(sin, range(1, 100))
 plt.imshow(result, cmap='RdBu_r')
 plt.gca().invert_yaxis()
 plt.title('CWT of 60Hz sin wave')
 plt.show()
 ```
+
+You can also calculate inter trial coherence.
+
+```python
+result = morse.power(sin, range(1, 100))
+```
+
+You can also use plot_tf().
+It can plot result with colorbar.
+
+```python
+from nin_wavelets import plot_tf
+plot_tf(result)
+```
+
+If you just want to perform cwt only, write like this.
+
+```python
+result = morse.cwt(sin, range(1, 100))
+```
+
+If you are mne user, epochs can be processed.
+See 'NinWavelets for MNE'.
 
 
 # Reference
@@ -70,7 +96,8 @@ and bothering procedures are done.
 
 ## Way to inherit
 
-This is an example.
+This is an example of __init__.
+
 ```python
 def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
              accuracy: float = 1, real_wave_length: float = 1.,
@@ -85,7 +112,9 @@ def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
 
 
 ## Morse Class
+
 This is a class to GMW.
+Sub class of WaveletBase.
 
 ```python
 from nin_wavelets import Morse
@@ -116,19 +145,22 @@ morse = Morse()
 
 
 ### make_wavelets
+
+Exsample.
+
 ```python
 wavelet = Morse(1000, 17.5, 3).make_wavelets([10])[0]
 ```
 
-Make list of morse wavelets.  
+Make list of wavelets.  
 
 | Param | Type  |                      |
 |-------|-------|----------------------|
 | freq  | float | List of frequencies. |
 
 Because it returnes bad wave easily,  
-you should use it when you plot only.  
-For example, sfreq=1000, freq=3 it returnes bad wave.  
+you should use it when you plot it only.  
+For example, GMW with sfreq=1000, freq=3 returnes bad wave.  
 If you want good wave, you must set  
 large accuracy and length when you make this instance.  
 
@@ -136,6 +168,7 @@ Returns
 MorseWavelet: list of np.ndarray  
 
 ### make_fft_waves
+
 ```python
 make_fft_waves(self, total: float, one: float,
                freqs: Iterable) -> Iterator:

@@ -3,7 +3,7 @@ import cupy
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
-from typing import Union, List, Tuple, Iterator, Iterable
+from typing import Union, List, Tuple, Iterator, Iterable, Type
 from enum import Enum
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -11,10 +11,34 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 Numbers = Union[List[float], np.ndarray, range]
 
 
+def normalize(wave: np.ndarray) -> np.ndarray:
+    ''' Normalize norm of complex array
+
+    Parameters
+    ----------
+    wave: np.ndarray[np.complex128, ndim=1]
+        Wave to normalize.
+
+    Returns
+    -------
+    np.ndarray[np.complex128, ndim=1]: Normalized wave.
+    '''
+    wave /= np.linalg.norm(wave.ravel()) * np.sqrt(0.5)
+    return wave
+
+
 def interpolate_alias(wave: np.ndarray) -> np.ndarray:
     '''
-    Kill wave over Nyquist frequency.
-    Not a method to kill Mr Nyquist, I am sorry.
+    Interpolate data over nyquist frequency.
+
+    Parameters
+    ----------
+    wave: np.ndarray[np.complex128, ndim=1]
+        Wave to interpolate.
+
+    Returns
+    -------
+    np.ndarray[np.complex128, ndim=1]: Interpolated wave.
     '''
     half_size: int = int(wave.shape[0] / 2)
     wave = np.pad(wave[:half_size],
@@ -55,12 +79,12 @@ class WaveletBase:
         '''
         Parameters
         ----------
-        sfreq: float|
+        sfreq: float
             Sampling frequency.
-        accuracy: float|
+        accuracy: float
             This value affects only when you plot the wavelet or
             you make wavelet in depricated way.
-        real_wave_length: float|
+        real_wave_length: float
             Length of wavelet. When this class run cwt,
             this will be automatically changed.
         '''
@@ -80,13 +104,15 @@ class WaveletBase:
 
         Parameters
         ----------
-        freq: float | Base Frequency. For example, 1.
+        freq: float
+            Base Frequency. For example, 1.
             It must be base frequency.
             You cannot use this for every freqs.
 
         Returns
         -------
-        np.ndarray | Timeline to calculate wavelet.
+        np.ndarray
+            Timeline to calculate wavelet.
         '''
         one: float = 1 / freq / self.accuracy / real_length
         total: float = self.sfreq / freq / real_length * self.real_wave_length
@@ -99,7 +125,8 @@ class WaveletBase:
 
         Parameters
         ----------
-        freq: float | Base Frequency. For example, 1.
+        freq: float
+            Base Frequency. For example, 1.
             It must be base frequency.
             You cannot use this for every freqs.
 
@@ -116,27 +143,13 @@ class WaveletBase:
     def peak_freq(self, freq: float) -> float:
         return 1.
 
-    def _normalize(self, wave: np.ndarray) -> np.ndarray:
-        ''' Normalize norm of complex array
-
-        Parameters
-        ----------
-        wave: np.ndarray[np.complex128, ndim=1] |
-            Wave to normalize.
-
-        Returns
-        -------
-        np.ndarray[np.complex128, ndim=1]: Normalized wave.
-        '''
-        wave /= np.linalg.norm(wave.ravel()) * np.sqrt(0.5)
-        return wave
-
     def make_fft_wavelet(self, freq: float = 1.) -> np.ndarray:
         ''' Make single FFTed wavelet.
 
         Parameters
         ----------
-        freq: float | Frequency of wavelet.
+        freq: float
+            Frequency of wavelet.
 
         Returns
         -------
@@ -147,7 +160,7 @@ class WaveletBase:
             result = np.asarray(self.trans_wavelet_formula(timeline, freq),
                                 dtype=np.complex128)
             result = interpolate_alias(result) if self.interpolate else result
-            return self._normalize(result)
+            return normalize(result)
         else:
             wavelet = self.make_wavelet(freq)
             wavelet = wavelet.astype(np.complex128)
@@ -162,7 +175,7 @@ class WaveletBase:
             result.imag = np.abs(result.imag)
             result.real = np.abs(result.real)
             result = interpolate_alias(result) if self.interpolate else result
-            result = self._normalize(result)
+            result = normalize(result)
             return result
 
     def make_fft_wavelets(self, freqs: Numbers) -> List[np.ndarray]:
@@ -171,7 +184,8 @@ class WaveletBase:
 
         Parameters
         ----------
-        freq: float | Frequency of wavelet.
+        freq: float
+            Frequency of wavelet.
 
         Returns
         -------
@@ -187,9 +201,9 @@ class WaveletBase:
 
         Parameters
         ----------
-        timeline: np.ndarray[np.float, ndim=1]|
+        timeline: np.ndarray[np.float, ndim=1]
             Time value of formula.
-        freq: float|
+        freq: float
             If you want to setup peak frequency,
             this variable may be useful.
 
@@ -210,10 +224,10 @@ class WaveletBase:
 
         Parameters
         ----------
-        freqs: np.ndarray[np.float, ndim=1]|
+        freqs: np.ndarray[np.float, ndim=1]
             Frequencies.
             If length of time is same as freqs, It is easy to write.
-        freq: float|
+        freq: float
             If you want to setup peak frequency,
             this variable may be useful.
 
@@ -232,11 +246,8 @@ class WaveletBase:
             wave = self.trans_wavelet_formula(timeline)
             wavelet: np.ndarray = ifft(wave)
             half: int = int(wavelet.shape[0])
-            # start: int = half - band if band < half // 2 else half // 2
-            # stop: int = half + band if band < half // 2 else half // 2 * 3
             start: int = half // 2
             stop: int = half // 2 * 3
-            # cut side of wavelets and contactnate
             total_wavelet = np.hstack((np.conj(np.flip(wavelet)),
                                        wavelet))
             wavelet = total_wavelet[start: stop]
@@ -244,7 +255,7 @@ class WaveletBase:
             timeline = self._setup_base_waveletshape(freq, 1, zero_mean=True)
             wavelet = np.asarray(self.wavelet_formula(timeline, freq),
                                  dtype=np.complex128)
-        return self._normalize(wavelet)
+        return normalize(wavelet)
 
     def make_wavelets(self,  freqs: Numbers) -> np.ndarray:
         '''
@@ -253,7 +264,8 @@ class WaveletBase:
 
         Parameters
         ----------
-        freqs: List[float] | Frequencies.
+        freqs: List[float]
+            Frequencies.
 
         Returns
         -------
@@ -263,15 +275,16 @@ class WaveletBase:
         return self.wavelets
 
     def cwt(self, wave: np.ndarray,
-            freqs: Numbers,
-            max_freq: int = 0) -> np.ndarray:
+            freqs: Numbers, max_freq: int = 0) -> np.ndarray:
         '''cwt
         Run CWT.
 
-        wave: np.ndarray| Wave to analyze
-        freqs: Union[List[float], range, np.ndarray]|
+        wave: np.ndarray
+            Wave to analyze
+        freqs: Union[List[float], range, np.ndarray]
             Frequencies
-        max_freq: int| Max Frequency
+        max_freq: int
+            Max Frequency
         '''
         # =====================================
         # This section should be cut
@@ -305,8 +318,10 @@ class WaveletBase:
 
         Parameters
         ----------
-        wave: np.ndarray| Wave to analyze
-        freqs: float | Frequencies. Before use this, please run plot.
+        wave: np.ndarray
+            Wave to analyze
+        freqs: float
+            Frequencies. Before use this, please run plot.
 
         Returns
         -------
@@ -315,15 +330,16 @@ class WaveletBase:
         result = self.cwt(wave, freqs)
         return np.abs(result) ** 2
 
-    def abs(self, wave: np.ndarray,
-            freqs: Numbers) -> np.ndarray:
+    def abs(self, wave: np.ndarray, freqs: Numbers) -> np.ndarray:
         '''
         Run cwt and compute power.
 
         Parameters
         ----------
-        wave: np.ndarray| Wave to analyze
-        freqs: float | Frequencies. Before use this, please run plot.
+        wave: np.ndarray
+            Wave to analyze
+        freqs: float
+            Frequencies. Before use this, please run plot.
 
         Returns
         -------
@@ -333,54 +349,62 @@ class WaveletBase:
         return np.abs(result)
 
     def plot(self, freq: float, show: bool = True) -> plt.figure:
-        '''
-        Plot wavelet.
-
-        Parameters
-        ----------
-        freq: float | Frequency of Wavelet.
-        show: bool| Show plot.
-
-        Returns
-        -------
-        Fig of matplotlib.
-        '''
-        freqs = np.array([freq])
-        plt_num = 3 if self.help else 2
-        wavelet = self.make_wavelets(freqs)[0]
-        fig = plt.figure(figsize=(6, 8))
-        ax = fig.add_subplot(plt_num, 1, 1)
-        ax.plot(np.arange(0, wavelet.shape[0], 1),
-                wavelet,
-                label='morse')
-        ax1 = fig.add_subplot(plt_num, 1, 2, projection='3d')
-        ax1.scatter3D(wavelet.real,
-                      np.arange(0, wavelet.shape[0], 1),
-                      wavelet.imag,
-                      label='morse')
-        ax.set_title('Generalized Morse Wavelet')
-        if plt_num == 3:
-            ax2 = fig.add_subplot(313)
-            ax2.set_title('Caution')
-            ax2.text(0.05, 0.1, self.help)
-            ax2.tick_params(labelbottom=False,
-                            labelleft=False,
-                            labelright=False,
-                            labeltop=False,
-                            bottom=False,
-                            left=False,
-                            right=False,
-                            top=False)
-        if show:
-            plt.show()
-        return fig
+        return plot_wavelet(self, freq, show)
 
 
-def plot_tf(data, vmin: float = None, vmax: float = None,
+def plot_wavelet(wavelet_obj: Type[WaveletBase], freq: float,
+                 show: bool = True) -> plt.figure:
+    '''
+    Plot wavelet.
+
+    Parameters
+    ----------
+    freq: float
+        Frequency of Wavelet.
+    show: bool
+        Show plot.
+
+    Returns
+    -------
+    Fig of matplotlib.
+    '''
+    freqs = np.array([freq])
+    plt_num = 3 if wavelet_obj.help else 2
+    wavelet = wavelet_obj.make_wavelets(freqs)[0]
+    fig = plt.figure(figsize=(6, 8))
+    ax = fig.add_subplot(plt_num, 1, 1)
+    ax.plot(np.arange(0, wavelet.shape[0], 1),
+            wavelet,
+            label='morse')
+    ax1 = fig.add_subplot(plt_num, 1, 2, projection='3d')
+    ax1.scatter3D(wavelet.real,
+                  np.arange(0, wavelet.shape[0], 1),
+                  wavelet.imag,
+                  label='morse')
+    ax.set_title('Generalized Morse Wavelet')
+    if plt_num == 3:
+        ax2 = fig.add_subplot(313)
+        ax2.set_title('Caution')
+        ax2.text(0.05, 0.1, wavelet_obj.help)
+        ax2.tick_params(labelbottom=False,
+                        labelleft=False,
+                        labelright=False,
+                        labeltop=False,
+                        bottom=False,
+                        left=False,
+                        right=False,
+                        top=False)
+    if show:
+        plt.show()
+    return fig
+
+
+def plot_tf(data: np.ndarray, vmin: Union[float, None] = None,
+            vmax: Union[float, None] = None,
             cmap: str = 'RdBu_r', show: bool = True) -> plt.Axes:
     '''
     Plot by matplotlib.
-    vrange: Tuple[float, float]|
+    vrange: Tuple[float, float]
         This is range of color.
         Same as tuple of vmin and vmax of matplotlib.
     '''

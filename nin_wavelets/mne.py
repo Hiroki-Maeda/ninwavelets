@@ -3,14 +3,12 @@ import cupy
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
-from typing import Union, List, Tuple, Iterator, Iterable
+from typing import Union, List, Tuple, Iterator, Iterable, Type
 from enum import Enum
 from nin_wavelets.base import WaveletBase, WaveletMode, Numbers
 from nin_wavelets import Morlet, Morse, MorseMNE, Haar
 from mne import Epochs, Evoked
 from mne.io import Raw
-
-Wavelet = Union[WaveletBase, Morlet, Morse, MorseMNE, Haar]
 
 
 class EpochsWavelet:
@@ -23,15 +21,14 @@ class EpochsWavelet:
     >>> power = mne.RawWavelet(raw, wavelet).power()
     >>> itc = mne.RawWavelet(raw, wavelet).itc()
     '''
-    def __init__(self, epochs: Epochs, wavelet: Wavelet) -> None:
+    def __init__(self, epochs: Epochs, wavelet: Type[WaveletBase]) -> None:
         '''
         Parameters
         ====================
-        epochs: mne.Epochs|
+        epochs: mne.Epochs
             Epochs of mne.
-        wavelet: instance of wavelet|
+        wavelet: instance of wavelet
             wavelet is union of wavelet objects, defined as below.
-            Wavelet = Union[WaveletBase, Morlet, Morse, MorseMNE, Haar]
         '''
         self.epochs = epochs
         self.wavelet = wavelet
@@ -43,9 +40,9 @@ class EpochsWavelet:
 
         Parameters
         ====================
-        wave: np.ndarray|
+        wave: np.ndarray
             Wave to transform.
-        freqs: Union[List[float], range, np.ndarray]|
+        freqs: Union[List[float], range, np.ndarray]
             Frequencies to analyze.
         '''
         wave_index = self.epochs.ch_names.index(ch_name)
@@ -59,9 +56,9 @@ class EpochsWavelet:
 
         Parameters
         ====================
-        wave: np.ndarray|
+        wave: np.ndarray
             Wave to transform.
-        freqs: Union[List[float], range, np.ndarray]|
+        freqs: Union[List[float], range, np.ndarray]
             Frequencies to analyze.
         '''
         absolute = np.abs(self.cwt(ch_name, freqs))
@@ -74,9 +71,9 @@ class EpochsWavelet:
 
         Parameters
         ====================
-        wave: np.ndarray|
+        wave: np.ndarray
             Wave to transform.
-        freqs: Union[List[float], range, np.ndarray]|
+        freqs: Union[List[float], range, np.ndarray]
             Frequencies to analyze.
         '''
         cwt = self.cwt(ch_name, freqs)

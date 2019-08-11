@@ -20,18 +20,23 @@ class Morse(WaveletBase):
 
     Parameters
     ----------
-    sfreq: float | Sampling frequency.
+    sfreq: float
+        Sampling frequency.
         This behaves like sfreq of mne-python.
-    b: float | beta value
-    r: float | gamma value. 3 may be good value.
-    accuracy: float | Accurancy paramater.
+    b: float
+        beta value
+    r: float
+        gamma value. 3 may be good value.
+    accuracy: float
+        Accurancy paramater.
         It does not make sence when you use fft only.
         Because, Morse Wavelet needs Inverse Fourier Transform,
         length of wavelet changes but it is tiring to detect. :(
         If you use ifft, low frequency causes bad wave.
         Please check wave by Morse.plot(freq) before use it.
         If wave is bad, large accuracy can help you.(But needs cpu power)
-    length: float | Length of wavelet.
+    length: float
+        Length of wavelet.
         It does not make sence when you use fft only.
         Too long wavelet causes slow calculation.
         This param is cutting threshould of wavelets.
@@ -92,17 +97,20 @@ class Morlet(WaveletBase):
 
     Parameters
     ----------
-    sfreq: float | Sampling frequency.
-        This behaves like sfreq of mne-python.
-    sigma: float | sigma value
-    accuracy: float | Accurancy paramater.
+    sfreq: float
+        Sampling frequency.  This behaves like sfreq of mne-python.
+    sigma: float
+        sigma value
+    accuracy: float
+        Accurancy paramater.
         It does not make sence when you use fft only.
         Because, Morse Wavelet needs Inverse Fourier Transform,
         length of wavelet changes but it is tiring to detect. :(
         If you use ifft, low frequency causes bad wave.
         Please check wave by Morse.plot(freq) before use it.
         If wave is bad, large accuracy can help you.(But needs cpu power)
-    length: float | Length of wavelet.
+    length: float
+        Length of wavelet.
         It does not make sence when you use fft only.
         Too long wavelet causes slow calculation.
         This param is cutting threshould of wavelets.
@@ -165,7 +173,8 @@ class MorseMNE(Morse):
 
         Parameters
         ----------
-        freqs: float | Frequencies. Before use this, please run plot.
+        freqs: float
+            Frequencies. Before use this, please run plot.
 
         Returns
         -------
