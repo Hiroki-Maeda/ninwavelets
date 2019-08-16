@@ -1,25 +1,14 @@
 import numpy as np
-import cupy
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
-from scipy.fftpack import ifft, fft
-from typing import Union, List, Tuple, Iterator, Iterable, Type
-from enum import Enum
-from nin_wavelets.base import WaveletBase, WaveletMode, Numbers
-from nin_wavelets import Morlet, Morse, MorseMNE, Haar
-from mne import Epochs, Evoked
-from mne.io import Raw
+from typing import Type, NewType
+from nin_wavelets.base import WaveletBase, Numbers
+
+
+Epochs = NewType('Epochs', object)
 
 
 class EpochsWavelet:
     '''
     A class to perform wavelet transform to mne.Epochs.
-    >>> epochs = mne.Epochs(fname)
-    >>> data = epochs.get_data()
-    >>> wavelet = Morlet()
-    >>> result = mne.RawWavelet(raw, wavelet).cwt()
-    >>> power = mne.RawWavelet(raw, wavelet).power()
-    >>> itc = mne.RawWavelet(raw, wavelet).itc()
     '''
     def __init__(self, epochs: Epochs, wavelet: Type[WaveletBase]) -> None:
         '''

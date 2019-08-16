@@ -1,11 +1,12 @@
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
+from typing import Any
+from multiprocessing import Pool
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft
 from mne.time_frequency import morlet
 from nin_wavelets.base import interpolate_alias
 from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf
-from .tooltip import Parallel
 import gc
 
 
@@ -97,20 +98,18 @@ def plot_sin_fft() -> None:
 
 
 def cwt_test(interpolate: bool = True) -> None:
-    sin = make_example(3)
-    p = Parallel(2)
+    sin = make_example(2)
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2)
     ax1.invert_yaxis()
     ax2.invert_yaxis()
 
-    morse = Morse()
-    nin_morlet = Morlet()
+    morse = Morse(interpolate=interpolate)
+    nin_morlet = Morlet(interpolate=interpolate)
     nin_morlet.mode = WaveletMode.Both
 
-    p.append(morse.power, sin, np.arange(1., 1000, 1))
-    p.append(nin_morlet.power, sin, np.arange(1., 1000, 1))
-    result_morse, result_morlet = p.run()
+    result_morse = morse.power(sin, np.arange(1., 1000, 1))
+    result_morlet = nin_morlet.power(sin, np.arange(1., 1000, 1))
 
     vmax = 0.03
     ax1.imshow(np.abs(result_morse), cmap='RdBu_r', vmax=vmax)
@@ -120,23 +119,23 @@ def cwt_test(interpolate: bool = True) -> None:
     ax1.set_title('Morse')
     ax2.set_title('Morlet')
     plt.show()
+    result_morse = morse.power(sin, reuse=True)
     plot_tf(result_morse)
+    plt.show()
 
 
 def fft_wavelet_test() -> None:
-    hz = 300.
+    hz = 10.
     r = 3
     b = 17.5
     s = 7
     morse = Morse(r=r, b=b)
     morlet = Morlet(sigma=s)
     fig = plt.figure()
-    p = Parallel(4)
-    p.append(morse.make_wavelet, hz)
-    p.append(morse.make_fft_wavelet, hz)
-    p.append(morlet.make_wavelet, hz)
-    p.append(morlet.make_fft_wavelet, hz)
-    w, a, b, c = p.run()
+    w = morse.make_wavelet(hz)
+    a = morse.make_fft_wavelet(hz)
+    b = morlet.make_wavelet(hz)
+    c = morlet.make_fft_wavelet(hz)
     ax = fig.add_subplot(1, 1, 1)
     ax.plot(w, label='Generalized Morse wavelet')
     ax.plot(a, label='FFTed Generalized Morse wavelet')
@@ -150,12 +149,11 @@ def fft_wavelet_test() -> None:
     plt.show()
 
 
-
 if __name__ == '__main__':
     # enable_cupy()
     print('Test Run')
     # plot_sin_fft()
     # test()
-    test3d()
-    # fft_wavelet_test()
-    cwt_test()
+    # test3d()
+    fft_wavelet_test()
+    cwt_test(True)

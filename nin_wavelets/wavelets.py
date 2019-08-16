@@ -1,6 +1,7 @@
 from .base import WaveletBase, WaveletMode
 from typing import Union, List
 import numpy as np
+from os import cpu_count
 
 
 class Morse(WaveletBase):
@@ -44,8 +45,8 @@ class Morse(WaveletBase):
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
                  accuracy: float = 1, real_wave_length: float = 1.,
                  interpolate: bool = False) -> None:
-        super(Morse, self).__init__(sfreq, accuracy,
-                                    real_wave_length, interpolate)
+        super(Morse, self).__init__(sfreq, accuracy, real_wave_length,
+                                    interpolate)
         self.r: float = r
         self.b: float = b
         self.mode = WaveletMode.Reverse
@@ -67,10 +68,10 @@ class Morse(WaveletBase):
         '''
         freqs = freqs / freq
         step: np.ndarray = np.heaviside(freqs, freqs)
-        wave: np.ndarray = 2 * (step * (freqs ** self.b) *
-                                np.e ** ((self.b / self.r) *
-                                         (1 - freqs ** self.r)
-                                         )) / np.pi
+        wave: np.ndarray = 2. * (step * np.float_power(freqs, self.b) *
+                                 np.exp((self.b / self.r) *
+                                        (1. - np.float_power(freqs, self.r))
+                                        )) / np.pi
         return wave
 
 
@@ -112,31 +113,34 @@ class Morlet(WaveletBase):
     '''
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
                  accuracy: float = 1., real_wave_length: float = 1.,
-                 interpolate: bool = False, gabor: bool = False) -> None:
-        super(Morlet, self).__init__(sfreq, accuracy,
-                                     real_wave_length, interpolate)
+                 gabor: bool = False, interpolate: bool = False) -> None:
+        super(Morlet, self).__init__(sfreq, accuracy, real_wave_length,
+                                     interpolate)
         self.mode = WaveletMode.Normal
         # self.mode = WaveletMode.Both
         self.sigma = sigma
-        self.c = (1 + np.e ** (-self.sigma ** 2 / 2) -
-                  2 * np.e ** (-3 / 4 * self.sigma ** 2)) ** (-1/2)
-        self.k = 0 if gabor else np.e ** (-self.sigma ** 2 / 2)
+        self.c = np.float_power(1 +
+                                np.exp(-np.float_power(self.sigma, 2) / 2)
+                                - 2 * np.exp(-3 / 4
+                                             * np.float_power(self.sigma, 2)),
+                                -1/2)
+        self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
 
     def trans_wavelet_formula(self, freqs: np.ndarray,
                               freq: float = 1) -> np.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
-        return (self.c * np.pi ** (-1/4) *
-                (np.e**(-(self.sigma-freqs)**2/2) -
-                 self.k * np.e ** (-freqs**2/2)))
+        return (self.c * np.float_power(np.pi, (-1/4)) *
+                (np.exp(-np.square(self.sigma-freqs) / 2) -
+                 self.k * np.exp(-np.square(freqs) / 2)))
 
     def wavelet_formula(self, timeline: np.ndarray,
                         freq: float = 1) -> np.ndarray:
-        return (self.c * np.pi ** (-1 / 4)
-                * np.e ** (-timeline ** 2 / 2)
-                * (np.e ** (self.sigma * 1j * timeline) - self.k))
+        return (self.c * np.float_power(np.pi, (-1 / 4))
+                * np.exp(-np.square(timeline) / 2)
+                * (np.exp(self.sigma * 1j * timeline) - self.k))
 
     def peak_freq(self, freq: float) -> float:
-        return self.sigma / (1. - np.e ** (-self.sigma * freq))
+        return self.sigma / (1. - np.exp(-self.sigma * freq))
 
 
 class MorseMNE(Morse):
@@ -150,8 +154,8 @@ class MorseMNE(Morse):
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
                  accuracy: float = 1., real_wave_length: float = 1.,
                  interpolate: bool = False) -> None:
-        super(MorseMNE, self).__init__(sfreq, accuracy,
-                                       real_wave_length, interpolate)
+        super(MorseMNE, self).__init__(sfreq, accuracy, real_wave_length,
+                                       interpolate)
         self.r: float = r
         self.b: float = b
         self.mode = WaveletMode.Reverse

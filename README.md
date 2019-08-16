@@ -123,26 +123,30 @@ from nin_wavelets import Morse
 ```python
 Morse(self, sfreq: float = 1000,
       b: float = 17.5, r: float = 3,
-      length: float = 10, accuracy: float = 1) -> None:
+      length: float = 10, accuracy: float = 1,
+      interpolate=False) -> None:
 ```
 
 Parameters
 
-| Param    | Type  | Default |                                                              |
-| --       | --    | --      | --                                                           |
-| sfreq    | float | 1000Hz  | Sampling frequency.                                          |
-| b        | float | 17.5    | beta value                                                   |
-| r        | float | 3       | gamma value. 3 may be good value.                            |
-| accuracy | float | 1       | Accurancy paramater. It affects only when you plot wavelets. |
-| length   | float | 10      | Length paramater. It affects only when you plot wavelets.    |
+| Param       | Type  | Default |                                                              |
+| --          | --    | --      | --                                                           |
+| sfreq       | float | 1000Hz  | Sampling frequency.                                          |
+| b           | float | 17.5    | beta value                                                   |
+| r           | float | 3       | gamma value. 3 may be good value.                            |
+| accuracy    | float | 1       | Accurancy paramater. It affects only when you plot wavelets. |
+| length      | float | 10      | Length paramater. It affects only when you plot wavelets.    |
+| interpolate | bool  | False   | Interpolate frequencies which is higher than nyquist freq.   |
 
 
 
 ```python
 morse = Morse()
-
 ```
 
+interpolate=True makes your code faster.
+(Up to half time)
+But, I dont know whether it is good or bad...
 
 ### make_wavelets
 
@@ -182,16 +186,17 @@ it run FFT to make them.
 ### cwt
 CWT method.
 
-| Param              | Type  |                                               |
-|--------------------|-------|-----------------------------------------------|
-| wave               | float | Wave drawed by numpy.                         |
-| freqs              | float | List of frequencies.                          |
-| max_freq           | float | Max freq.                                     |
+| Param    | Type  |                                                                      |
+|----------|-------|----------------------------------------------------------------------|
+| wave     | float | Wave drawed by numpy.                                                |
+| freqs    | float | List of frequencies.                                                 |
+| max_freq | float | Max freq.                                                            |
+| reuse    | bool  | Reuse wavelets you made before. If true, calculation becomes faster. |
 
 ```python
 def cwt(self, wave: np.ndarray,
         freqs: Union[List[float], range, np.ndarray],
-        max_freq: int = 0) -> np.ndarray:
+        max_freq: int = 0, reuse=True) -> np.ndarray:
 ```
 
 example
@@ -213,16 +218,18 @@ max_freq is a param to cut result.
 ## power
 ```
 power(self, wave: np.ndarray,
-      freqs: Union[List[float], range, np.ndarray]) -> np.ndarray:
+      freqs: Union[List[float], range, np.ndarray],
+      reuse=True) -> np.ndarray:
 ```
 
 Run cwt of mne-python, and compute power.
 
-| Param              | Type  |                                               |
-|--------------------|-------|-----------------------------------------------|
-| wave               | float | Wave drawed by numpy.                         |
-| freqs              | float | List of frequencies.                          |
-| max_freq           | float | Max freq.                                     |
+| Param    | Type  |                                                                      |
+|----------|-------|----------------------------------------------------------------------|
+| wave     | float | Wave drawed by numpy.                                                |
+| freqs    | float | List of frequencies.                                                 |
+| max_freq | float | Max freq.                                                            |
+| reuse    | bool  | Reuse wavelets you made before. If true, calculation becomes faster. |
 
 Returns  
 Result of cwt. np.ndarray.  
@@ -284,8 +291,8 @@ I am thinking about it...
     + [ ] 2D wavelet
 - [ ] Use cuda, cython and speedup!
     + [ ] It was cythonized before, but not very fast. Now, it is pure python.
-    + [ ] I already tried cuda and it was slow...;(
+    + [ ] I already tried cuda and it was extremely slow...;(
 - [ ] Kill typos(I am a bad male yellow monkey and not good at English) ;(
 - [ ] Licence
     + [ ] Whether write my name or not.
-    + [ ] Which licence to use(I like MIT)
+    + [ ] Which licence to use.
