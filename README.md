@@ -1,7 +1,9 @@
 # NinWavelets
-This is a python package for wavelet transform.
-Generalized Morse(GMW), Morlet and so on.
-It can also perform CWT based on GMW.
+This is a python package for analystic wavelet transform.  
+Generalized Morse(GMW), Morlet and so on.  
+It can also perform CWT based on GMW.  
+This project is just my hobby. I think there are lots of bugs.  
+**You should not use this!**
 
 # Why NinWavelets?
 - Use wavelets which is originally Frourier transformed
