@@ -1,4 +1,5 @@
 import numpy as np
+import cupy as cp
 import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
 from typing import Union, List, Iterator, Type
@@ -32,7 +33,8 @@ def normalize(wave: np.ndarray) -> np.ndarray:
     return wave
 
 
-def interpolate_alias(wave: np.ndarray) -> np.ndarray:
+def interpolate_alias(wave: Union[cp.ndarray, np.ndarray],
+                      cuda: bool = False) -> np.ndarray:
     '''
     Interpolate data over nyquist frequency.
 
@@ -46,9 +48,14 @@ def interpolate_alias(wave: np.ndarray) -> np.ndarray:
     np.ndarray[np.complex128, ndim=1]: Interpolated wave.
     '''
     half_size: int = int(wave.shape[0] / 2)
-    wave = np.pad(wave[:half_size],
-                  [0, wave.shape[0] - half_size],
-                  'constant', constant_values=0)
+    if cuda:
+        wave = cp.pad(wave[:half_size],
+                      [0, wave.shape[0] - half_size],
+                      'constant', constant_values=0)
+    else:
+        wave = np.pad(wave[:half_size],
+                      [0, wave.shape[0] - half_size],
+                      'constant', constant_values=0)
     return wave
 
 
@@ -80,7 +87,7 @@ class WaveletBase:
     '''
     def __init__(self, sfreq: float = 1000, accuracy: float = 1.,
                  real_wave_length: float = 1.,
-                 interpolate: bool = True) -> None:
+                 interpolate: bool = True, cuda: bool = False) -> None:
         '''
         Parameters
         ----------
@@ -101,6 +108,7 @@ class WaveletBase:
         # Distance between freqs(cwt)
         self.freq_dist: float
         self.interpolate = interpolate
+        self.cuda = cuda
 
     def _setup_base_trans_waveshape(self, freq: float,
                                     real_wave_length: float) -> np.ndarray:
@@ -123,6 +131,8 @@ class WaveletBase:
         '''
         one: float = 1 / freq / self.accuracy
         total: float = self.sfreq / freq * real_wave_length
+        if self.cuda:
+            return cp.arange(0, total, one)
         return np.arange(0, total, one, dtype=np.float)
 
     def _setup_base_waveletshape(self, freq: float, real_length: float = 1,
@@ -166,12 +176,23 @@ class WaveletBase:
             if self.interpolate:
                 t = self._setup_base_trans_waveshape(self.real_wave_length,
                                                      self.real_wave_length / 2)
-                result = self.trans_wavelet_formula(t, freq)
-                result = np.hstack((result, np.zeros(len(t))))
+                if self.cuda:
+                    result = self.cp_trans_wavelet_formula(t, freq)
+                else:
+                    result = self.trans_wavelet_formula(t, freq)
+                if self.cuda:
+                    result = cp.hstack((result, np.zeros(len(t))))
+                else:
+                    result = np.hstack((result, np.zeros(len(t))))
             else:
                 t = self._setup_base_trans_waveshape(self.real_wave_length,
                                                      self.real_wave_length)
-                result = self.trans_wavelet_formula(t, freq)
+                if self.cuda:
+                    result = self.cp_trans_wavelet_formula(t, freq)
+                else:
+                    result = self.trans_wavelet_formula(t, freq)
+            if self.cuda:
+                return normalize(cp.asnumpy(result))
             return normalize(result)
         else:
             wavelet = self.make_wavelet(freq)
@@ -250,6 +271,28 @@ class WaveletBase:
         '''
         return freqs
 
+    def cp_trans_wavelet_formula(self, freqs: Iterator[float],
+                                 freq: float = 1.) -> np.ndarray:
+        ''' trans_wavelet_formula
+        The formula of Fourier Transformed Wavelet.
+        Other procedures are performed by other methods.
+        This is method with cupy.
+
+        Parameters
+        ----------
+        freqs: np.ndarray[np.float, ndim=1]
+            Frequencies.
+            If length of time is same as freqs, It is easy to write.
+        freq: float
+            If you want to setup peak frequency,
+            this variable may be useful.
+
+        Returns
+        -------
+        Base of wavelet: np.ndarray:
+        '''
+        return freqs
+
     def make_wavelet(self, freq: float) -> np.ndarray:
         if self.mode in [WaveletMode.Reverse, WaveletMode.Twice]:
             t = self._setup_base_trans_waveshape(freq, self.real_wave_length)
@@ -304,13 +347,17 @@ class WaveletBase:
             self.make_fft_wavelets(freqs)
         wavelet = [np.pad(x, [0, wave.shape[0] - x.shape[0]], 'constant')
                    for x in self.fft_wavelets]
-        fft_wave = fft(wave)
+        wavelet = cp.asarray(wavelet) if self.cuda else np.array(wavelet)
+        fft_wave = cp.fft.fft(cp.asarray(wave)) if self.cuda else fft(wave)
         if self.interpolate:
-            fft_wave = interpolate_alias(fft_wave)
+            fft_wave = interpolate_alias(fft_wave, cuda=self.cuda)
         # Keep powerful even if long wave.
         fft_wave *= np.sqrt(wave.shape[0] / self.sfreq)
         # result = [ifft(x * fft_wave) for x in wavelet]
-        result = ifft(wavelet * fft_wave)
+        if self.cuda:
+            result = cp.asnumpy(cp.fft.ifft(wavelet * fft_wave))
+        else:
+            result = ifft(wavelet * fft_wave)
         if max_freq == 0:
             max_freq = int(self.sfreq / self.freq_dist)
         self.real_wave_length = 1.

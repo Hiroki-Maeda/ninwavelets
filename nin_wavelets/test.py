@@ -97,18 +97,19 @@ def plot_sin_fft() -> None:
     plt.show()
 
 
-def cwt_test(interpolate: bool = True) -> None:
-    sin = make_example(2)
+def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
+    sin = make_example(3)
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2)
     ax1.invert_yaxis()
     ax2.invert_yaxis()
 
-    morse = Morse(interpolate=interpolate)
-    nin_morlet = Morlet(interpolate=interpolate)
+    morse = Morse(interpolate=interpolate, cuda=cuda)
+    nin_morlet = Morlet(interpolate=interpolate, cuda=cuda)
     nin_morlet.mode = WaveletMode.Both
 
-    result_morse = morse.power(sin, np.arange(1., 1000, 1))
+    # result_morse = morse.power(sin, np.arange(1., 1000, 1))
+    result_morse = morse.power(sin, range(1000))
     result_morlet = nin_morlet.power(sin, np.arange(1., 1000, 1))
 
     vmax = 0.03
@@ -156,4 +157,4 @@ if __name__ == '__main__':
     # test()
     # test3d()
     fft_wavelet_test()
-    cwt_test(True)
+    cwt_test(False, True)

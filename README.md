@@ -6,9 +6,14 @@ It can also perform CWT based on GMW.
 # Why NinWavelets?
 - Use wavelets which is originally Frourier transformed
     + Generalized Morse Wavelets, and so on.
+    + Scalable(?)
 - Skipping one FFT when performing CWT.
-- Scalable(?)
-
+    + May be better and faster if you use FFT method.
+    + Worse than convolve method.(This method is extremely slow)
+- Cuda
+    + If you want to process long wave, it may be fast.
+- Compatibility
+    + Work with mne-python.
 
 # Install
 ```
@@ -16,13 +21,18 @@ pip install git+https://github.com/uesseu/nin_wavelets
 ```
 
 # Dependency
-- python 3.6.5 or newer
+- python 3.6.5 or newer(It involves type hint and annotation)
 
-These are automatically installed.
+These are automatically installed.  
 - Scipy
 - numpy
+- cupy
 
-Optionally, you can use this.
+If you want to use cuda, please setup cuda.
+[https://developer.nvidia.com/cuda-zone](https://developer.nvidia.com/cuda-zone)
+[https://www.geforce.com/drivers](https://www.geforce.com/drivers)
+
+Optionally, if you want to process EEG/MEG, you can use this.  
 - mne
 
 ```
@@ -30,9 +40,10 @@ pip install mne
 ```
 
 At first, it was written for mne python.  
-but using mne function with this package is ugly way.  
+but I found that, using mne function with this package is ugly way.  
 (Because it needs inverse Fourier transform to no purpose.)  
 Now it has own CWT method.  
+
 It is brand new project, and under heavily development.  
 Destructive changes may be made.  
 
@@ -54,7 +65,7 @@ plt.title('CWT of 60Hz sin wave')
 plt.show()
 ```
 
-You can also calculate inter trial coherence.
+You can also calculate power.
 
 ```python
 result = morse.power(sin, range(1, 100))
@@ -79,38 +90,6 @@ See 'NinWavelets for MNE'.
 
 
 # Reference
-## WaveletBase Class
-Super class of wavelets.
-You can inherit this class and make new wavelets.
-
-After inherit this, you can edit these methods.  
-
-- BaseWavelet.wavelet_formula
-- BaseWavelet.trans_wavelet_formula
-- BaseWavelet.peak_freq
-
-At first, you need to overwrite them.
-They needs to written by numpy.
-These methods are used in the class,
-and bothering procedures are done.
-
-## Way to inherit
-
-This is an example of __init__.
-
-```python
-def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
-             accuracy: float = 1, real_wave_length: float = 1.,
-             interpolate: bool = False) -> None:
-    super(Morse, self).__init__(sfreq, accuracy,
-                                real_wave_length, interpolate)
-    self.r: float = r
-    self.b: float = b
-    self.mode = WaveletMode.Reverse
-```
-
-
-
 ## Morse Class
 
 This is a class to GMW.
@@ -124,7 +103,7 @@ from nin_wavelets import Morse
 Morse(self, sfreq: float = 1000,
       b: float = 17.5, r: float = 3,
       length: float = 10, accuracy: float = 1,
-      interpolate=False) -> None:
+      interpolate=False, cuda: bool = False) -> None:
 ```
 
 Parameters
@@ -137,6 +116,7 @@ Parameters
 | accuracy    | float | 1       | Accurancy paramater. It affects only when you plot wavelets. |
 | length      | float | 10      | Length paramater. It affects only when you plot wavelets.    |
 | interpolate | bool  | False   | Interpolate frequencies which is higher than nyquist freq.   |
+| cuda        | bool  | False   | Use cuda or not. See 'Performance of wavelet transform'.     |
 
 
 
@@ -234,7 +214,9 @@ Run cwt of mne-python, and compute power.
 Returns  
 Result of cwt. np.ndarray.  
 
+
 ## MorseMNE Class(Bad way)
+
 MorseMNE class to use function of MNE-python,  
 which is Great package to analyze EEG/MEG.  
 It is same as Morse class except cwt but  
@@ -252,6 +234,7 @@ And so, I think, it may be better to use the formula
 even if you use Morlet Wavelet.  
 
 ## NinWavelets for MNE
+
 nin_wavelets.EpochsWavelet is a class for Epochs class of mne.
 
 '''python
@@ -269,6 +252,129 @@ At first, make instance of wavelets(Morse, Morlet and so on).
 Then, make EpochsWavelet class.
 This has methods named cwt, power and itc.
 plot_tf is a function to plot numpy array.
+
+## WaveletBase Class
+Super class of wavelets.
+You can inherit this class and make new wavelets.
+
+After inherit this, you can edit these methods.  
+
+- BaseWavelet.wavelet_formula
+- BaseWavelet.trans_wavelet_formula
+- BaseWavelet.peak_freq
+
+At first, you need to overwrite them.
+They needs to written by numpy.
+These methods are used in the class,
+and bothering procedures are done.
+
+## Way to inherit
+
+This is an example.
+This code is sub class of BaseWavelet, and is
+nin_wavelets.MorletWavelet.
+
+```python
+class Morlet(WaveletBase):
+    '''
+    Morlet Wavelets.
+    Example.
+    >>> morse = Morse(1000, sigma=7.)
+    >>> freq = 60
+    >>> time = np.arange(0, 0.3, 0.001)
+    >>> sin = np.array([np.sin(time * freq * 2 * np.pi)])
+    >>> result = morse.power(sin, range(1, 100))
+    >>> plt.imshow(result, cmap='RdBu_r')
+    >>> plt.gca().invert_yaxis()
+    >>> plt.title('CWT of 60Hz sin wave')
+    >>> plt.show()
+
+    Parameters
+    ----------
+    sfreq: float | Sampling frequency.
+        This behaves like sfreq of mne-python.
+    sigma: float | sigma value
+    accuracy: float | Accurancy paramater.
+        It does not make sence when you use fft only.
+        Because, Morse Wavelet needs Inverse Fourier Transform,
+        length of wavelet changes but it is tiring to detect. :(
+        If you use ifft, low frequency causes bad wave.
+        Please check wave by Morse.plot(freq) before use it.
+        If wave is bad, large accuracy can help you.(But needs cpu power)
+    length: float | Length of wavelet.
+        It does not make sence when you use fft only.
+        Too long wavelet causes slow calculation.
+        This param is cutting threshould of wavelets.
+        Peak wave * length is the length of wavelet.
+
+    Returns
+    -------
+    As constructor, Morse instance its self.
+    '''
+
+    def __init__(self, sfreq: float = 1000, sigma: float = 7.,
+                 accuracy: float = 1., real_wave_length: float = 1.,
+                 gabor: bool = False, interpolate: bool = False,
+                 cuda: bool = False) -> None:
+        super(Morlet, self).__init__(sfreq, accuracy, real_wave_length,
+                                     interpolate, cuda)
+        self.mode = WaveletMode.Both
+        self.sigma = sigma
+        self.c = np.float_power(1 +
+                                np.exp(-np.float_power(self.sigma, 2) / 2)
+                                - 2 * np.exp(-3 / 4
+                                             * np.float_power(self.sigma, 2)),
+                                -1/2)
+        self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
+
+    def cp_trans_wavelet_formula(self, freqs: cp.ndarray,
+                                 freq: float = 1.) -> cp.ndarray:
+        freqs = freqs / freq * self.peak_freq(freq)
+        result = (self.c * cp.pi ** (-1/4) *
+                  (cp.exp(-cp.square(self.sigma-freqs) / 2) -
+                   self.k * cp.exp(-cp.square(freqs) / 2)))
+        return result
+
+    def trans_wavelet_formula(self, freqs: np.ndarray,
+                              freq: float = 1) -> np.ndarray:
+        freqs = freqs / freq * self.peak_freq(freq)
+        return (self.c * np.float_power(np.pi, (-1/4)) *
+                (np.exp(-np.square(self.sigma-freqs) / 2) -
+                 self.k * np.exp(-np.square(freqs) / 2)))
+
+    def wavelet_formula(self, timeline: np.ndarray,
+                        freq: float = 1) -> np.ndarray:
+        return (self.c * np.float_power(np.pi, (-1 / 4))
+                * np.exp(-np.square(timeline) / 2)
+                * (np.exp(self.sigma * 1j * timeline) - self.k))
+
+    def peak_freq(self, freq: float) -> float:
+        return self.sigma / (1. - np.exp(-self.sigma * freq))
+```
+
+All you should do is write formula.  
+The formulas may be written in mathmatical papers! ;)  
+
+## Perfomance of wavelet formulas
+These formulas are usually complicated like this code.  
+And so, making wavelets takes much time.  
+  
+You should not use '**'. You should use np.float_power.  
+You should not use 'e**4'. You should use np.exp.
+These are critical.
+  
+Optionally, you can write code for cupy.  
+cupy is faster only when data is big.  
+
+I performed benchmark by notepc  
+'Dell G3 15-3579r' with Intel corei7(6core) and Geforce 1050.  
+
+| Length | back ground | CWT time |
+|--------|-------------|----------|
+| 1sec   | cupy        | 1.28sec  |
+| 1sec   | numpy       | 0.872sec |
+| 50sec  | cupy        | 7.25sec  |
+| 50sec  | numpy       | 15.9sec  |
 
 
 # Licence
@@ -289,9 +395,9 @@ I am thinking about it...
     + [ ] Decimation
     + [ ] DWT
     + [ ] 2D wavelet
-- [ ] Use cuda, cython and speedup!
+- [x] Use cuda, cython and speedup!
     + [ ] It was cythonized before, but not very fast. Now, it is pure python.
-    + [ ] I already tried cuda and it was extremely slow...;(
+    + [x] It may be faster with cupy if you process long wave.
 - [ ] Kill typos(I am a bad male yellow monkey and not good at English) ;(
 - [ ] Licence
     + [ ] Whether write my name or not.

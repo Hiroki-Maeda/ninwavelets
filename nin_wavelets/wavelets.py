@@ -1,6 +1,7 @@
 from .base import WaveletBase, WaveletMode
 from typing import Union, List
 import numpy as np
+import cupy as cp
 from os import cpu_count
 
 
@@ -44,9 +45,9 @@ class Morse(WaveletBase):
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
                  accuracy: float = 1, real_wave_length: float = 1.,
-                 interpolate: bool = False) -> None:
+                 interpolate: bool = False, cuda: bool = False) -> None:
         super(Morse, self).__init__(sfreq, accuracy, real_wave_length,
-                                    interpolate)
+                                    interpolate, cuda)
         self.r: float = r
         self.b: float = b
         self.mode = WaveletMode.Reverse
@@ -61,17 +62,30 @@ class Morse(WaveletBase):
                     accuracy" and "length"
                     It becomes bad easily when frequency is low.'''
 
+    def cp_trans_wavelet_formula(self, freqs: cp.ndarray,
+                                 freq: float = 1.) -> cp.ndarray:
+        np_freqs = cp.asnumpy(freqs)
+        step = cp.asarray(np.heaviside(np_freqs, np_freqs))
+        freqs = cp.asarray(freqs) / freq
+        wave = 2. * (step * freqs ** self.b *
+                     cp.exp((self.b / self.r) *
+                            (1.
+                             - freqs ** self.r)
+                            )) / cp.pi
+        return wave
+
     def trans_wavelet_formula(self, freqs: np.ndarray,
                               freq: float = 1.) -> np.ndarray:
         '''
         Make Fourier transformed morse wavelet.
         '''
         freqs = freqs / freq
-        step: np.ndarray = np.heaviside(freqs, freqs)
-        wave: np.ndarray = 2. * (step * np.float_power(freqs, self.b) *
-                                 np.exp((self.b / self.r) *
-                                        (1. - np.float_power(freqs, self.r))
-                                        )) / np.pi
+        step = np.heaviside(freqs, freqs)
+        wave = 2. * (step * np.float_power(freqs, self.b) *
+                     np.exp((self.b / self.r) *
+                            (1.
+                             - np.float_power(freqs, self.r))
+                            )) / np.pi
         return wave
 
 
@@ -111,13 +125,14 @@ class Morlet(WaveletBase):
     -------
     As constructor, Morse instance its self.
     '''
+
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
                  accuracy: float = 1., real_wave_length: float = 1.,
-                 gabor: bool = False, interpolate: bool = False) -> None:
+                 gabor: bool = False, interpolate: bool = False,
+                 cuda: bool = False) -> None:
         super(Morlet, self).__init__(sfreq, accuracy, real_wave_length,
-                                     interpolate)
-        self.mode = WaveletMode.Normal
-        # self.mode = WaveletMode.Both
+                                     interpolate, cuda)
+        self.mode = WaveletMode.Both
         self.sigma = sigma
         self.c = np.float_power(1 +
                                 np.exp(-np.float_power(self.sigma, 2) / 2)
@@ -125,6 +140,14 @@ class Morlet(WaveletBase):
                                              * np.float_power(self.sigma, 2)),
                                 -1/2)
         self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
+
+    def cp_trans_wavelet_formula(self, freqs: cp.ndarray,
+                                 freq: float = 1.) -> cp.ndarray:
+        freqs = freqs / freq * self.peak_freq(freq)
+        result = (self.c * cp.pi ** (-1/4) *
+                  (cp.exp(-cp.square(self.sigma-freqs) / 2) -
+                   self.k * cp.exp(-cp.square(freqs) / 2)))
+        return result
 
     def trans_wavelet_formula(self, freqs: np.ndarray,
                               freq: float = 1) -> np.ndarray:
@@ -153,9 +176,9 @@ class MorseMNE(Morse):
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
                  accuracy: float = 1., real_wave_length: float = 1.,
-                 interpolate: bool = False) -> None:
+                 interpolate: bool = False, cuda: bool = False) -> None:
         super(MorseMNE, self).__init__(sfreq, accuracy, real_wave_length,
-                                       interpolate)
+                                       interpolate, cuda)
         self.r: float = r
         self.b: float = b
         self.mode = WaveletMode.Reverse
@@ -169,7 +192,6 @@ class MorseMNE(Morse):
                     Please set larger value to param
                     accuracy" and "length"
                     It becomes bad easily when frequency is low.'''
-
 
     def cwt(self, wave: np.ndarray,
             freqs: Union[List[float], range, np.ndarray],
