@@ -102,9 +102,9 @@ See 'NinWavelets for MNE'.
 
 These are results from my test code.  
 
-![various](img/various.png')
+![various](img/various.png)
 
-![cwt](img/cwt.png')
+![cwt](img/cwt.png)
 
 # Reference
 ## Morse Class
