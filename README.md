@@ -2,20 +2,28 @@
 This is a python package for analystic wavelet transform.  
 Generalized Morse(GMW), Morlet and so on.  
 It can also perform CWT based on GMW.  
-This project is just my hobby. I think there are lots of bugs.  
-**You should not use this!**
+This project is just my hobby.  
+There may be lots of bugs.  
+**You should not use this package! m9(^q^) PooGyaaaaa!**
+
+![My EEG Power!](img/alpha.png)
+This is my alpha band of EEG which was processed by this package.
 
 # Why NinWavelets?
+There may be some advantages.
+
 - Use wavelets which is originally Frourier transformed
     + Generalized Morse Wavelets, and so on.
     + Scalable(?)
 - Skipping one FFT when performing CWT.
     + May be better and faster if you use FFT method.
-    + Worse than convolve method.(This method is extremely slow)
 - Cuda
-    + If you want to process long wave, it may be fast.
+    + If you want to process long wave, it may be faster.
 - Compatibility
-    + Work with mne-python.
+    + You can use it with mne-python.(Now, sensor based only...)
+
+There are some critical limitations, too.  
+See Limitations.  
 
 # Install
 ```
@@ -30,11 +38,13 @@ These are automatically installed.
 - numpy
 - cupy
 
-If you want to use cuda, please setup cuda.
-[https://developer.nvidia.com/cuda-zone](https://developer.nvidia.com/cuda-zone)
-[https://www.geforce.com/drivers](https://www.geforce.com/drivers)
+If you want to use cuda, please setup cuda.  
+[https://developer.nvidia.com/cuda-zone](https://developer.nvidia.com/cuda-zone)  
+[https://www.geforce.com/drivers](https://www.geforce.com/drivers)  
+It is faster if you process long wave, like my EEG power example.
 
 Optionally, if you want to process EEG/MEG, you can use this.  
+
 - mne
 
 ```
@@ -47,7 +57,7 @@ but I found that, using mne function with this package is ugly way.
 Now it has own CWT method.  
 
 It is brand new project, and under heavily development.  
-Destructive changes may be made.  
+Destructive changes may be made m9(^q^) PooGyaaaaa!.  
 
 
 # Exsample
@@ -90,6 +100,10 @@ result = morse.cwt(sin, range(1, 100))
 If you are mne user, epochs can be processed.
 See 'NinWavelets for MNE'.
 
+These are results from my test code.  
+
+![varisous](img/various.png')
+![cwt](img/cwt.png')
 
 # Reference
 ## Morse Class
@@ -379,10 +393,46 @@ I performed benchmark by notepc
 | 50sec  | numpy       | 15.9sec  |
 
 
+
+
+# Limitations
+
+### Method
+
+Mathmatically, DFT is not good way.  
+We have no good method to perform Fourier transform by digital computer.  
+Method of convolve is good way for Wavelet transform.  
+But GMW needs Frourier transform.  
+Further more, convolving needs long long loooong time.
+It is not good for Morlet wavelet too.
+There may be some methods.
+
+**1**
+```
+Convolve(wave, wavelet)  # Very good, but slow!
+```
+
+**2**
+```
+iFFT(FFT(wave) * FFT(wavelet))  # Fast, and widely used. But not good. 
+```
+
+**3**
+```
+iFFT(FFT(wave) * FFTed_wavelet)  # Better and faster than 2.
+```
+
+I adopted method 3. Not only GMW, but also Morlet wavelet will be performed by 3.
+
+### Hobby
+It is just my hobby. I am not professional person.  
+Further more, I am not an engineer or PhD or Master.  
+Just a man.  
+
 # Licence
 'This software is released under the MIT License, see LICENSE.txt.'  
-I thought so. But, tellilng you my name needs courage.  
-I am thinking about it...
+I wanted to write so. But, tellilng you my name thought SNS is said 'Not good!' in my country.  
+Mit licence requires my name... I am confused.
 
 # TODO
 
@@ -391,16 +441,16 @@ I am thinking about it...
     + [x] Morlet
     + [x] Gabor
     + [ ] Mexican hat
-    + [ ] Haar
+    + [x] Haar
     + [ ] Scalability for unknown wavelets
 - More methods
     + [ ] Decimation
     + [ ] DWT
     + [ ] 2D wavelet
-- [x] Use cuda, cython and speedup!
-    + [ ] It was cythonized before, but not very fast. Now, it is pure python.
+- [x] Use cuda or cython and speedup!
+    + [ ] It was cythonized before. But it is not good for scalability.
     + [x] It may be faster with cupy if you process long wave.
-- [ ] Kill typos(I am a bad male yellow monkey and not good at English) ;(
+- [ ] Kill typos(I am a Nip and not good at English) ;(
 - [ ] Licence
     + [ ] Whether write my name or not.
     + [ ] Which licence to use.

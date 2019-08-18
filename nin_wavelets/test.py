@@ -7,6 +7,7 @@ from scipy.fftpack import fft, ifft
 from mne.time_frequency import morlet
 from nin_wavelets.base import interpolate_alias
 from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf
+from mne.io import Raw
 import gc
 
 
@@ -105,10 +106,9 @@ def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
     ax2.invert_yaxis()
 
     morse = Morse(interpolate=interpolate, cuda=cuda)
-    nin_morlet = Morlet(interpolate=interpolate, cuda=cuda)
+    nin_morlet = Morlet(interpolate=interpolate, cuda=cuda, sfreq=500)
     nin_morlet.mode = WaveletMode.Both
 
-    # result_morse = morse.power(sin, np.arange(1., 1000, 1))
     result_morse = morse.power(sin, range(1000))
     result_morlet = nin_morlet.power(sin, np.arange(1., 1000, 1))
 
@@ -131,7 +131,7 @@ def fft_wavelet_test() -> None:
     b = 17.5
     s = 7
     morse = Morse(r=r, b=b)
-    morlet = Morlet(sigma=s)
+    morlet = Morlet(sigma=s, sfreq=500)
     fig = plt.figure()
     w = morse.make_wavelet(hz)
     a = morse.make_fft_wavelet(hz)
@@ -150,11 +150,32 @@ def fft_wavelet_test() -> None:
     plt.show()
 
 
+def eeg() -> None:
+    '''
+    This test code reads my eeg.
+    I am not sure whether I can open my eeg.
+    My boss may says "You shoulnt!"
+    If you have your own eeg, why dont you process your eeg?
+    '''
+    raw = Raw('/home/ninja/ninja.fif')
+    data = raw.get_data()[raw.ch_names.index('EEG O1-Ref')]
+    d = data[150*500: 190*500]
+    tf = Morse(raw.info['sfreq'], cuda=True).power(d, np.arange(0.1, 50, 0.1))
+    ax = plot_tf(tf, frange=(0, 50, 10), trange=(0, 40, 10), sfreq=500,
+                 show=False)
+    ax.set_title('My EEG power(O1)')
+    ax.set_xlabel('Time Course(sec)')
+    ax.set_ylabel('Hz')
+    plt.show()
+
+
+
 if __name__ == '__main__':
     # enable_cupy()
     print('Test Run')
     # plot_sin_fft()
     # test()
-    # test3d()
+    test3d()
     fft_wavelet_test()
     cwt_test(False, True)
+    eeg()

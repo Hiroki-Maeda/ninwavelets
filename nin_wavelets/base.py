@@ -17,7 +17,7 @@ def hamming_window(wave: np.ndarray) -> np.ndarray:
     return 0.54 - 0.46 * np.cos(2 * np.pi * window)
 
 
-def normalize(wave: np.ndarray) -> np.ndarray:
+def normalize(wave: np.ndarray, length: float) -> np.ndarray:
     ''' Normalize norm of complex array
 
     Parameters
@@ -30,6 +30,7 @@ def normalize(wave: np.ndarray) -> np.ndarray:
     np.ndarray[np.complex128, ndim=1]: Normalized wave.
     '''
     wave /= np.linalg.norm(wave.ravel()) * np.sqrt(0.5)
+    wave *= length
     return wave
 
 
@@ -192,17 +193,17 @@ class WaveletBase:
                 else:
                     result = self.trans_wavelet_formula(t, freq)
             if self.cuda:
-                return normalize(cp.asnumpy(result))
-            return normalize(result)
+                return normalize(cp.asnumpy(result), np.sqrt(self.sfreq/1000))
+            return normalize(result, np.sqrt(self.sfreq/1000))
         else:
             wavelet = self.make_wavelet(freq)
             half = int((self.sfreq * self.real_wave_length
                         - wavelet.shape[0]) / 2)
             wavelet = np.hstack((np.zeros(half), wavelet, np.zeros(half)))
-            result = fft(wavelet) / self.sfreq
+            result = fft(wavelet)
             result.imag = np.abs(result.imag)
             result.real = np.abs(result.real)
-            return normalize(result)
+            return normalize(result, np.sqrt(self.sfreq / 1000))
 
     def make_fft_wavelets(self, freqs: Numbers) -> List[np.ndarray]:
         ''' Make list of FFTed wavelets.
@@ -306,7 +307,7 @@ class WaveletBase:
         else:
             timeline = self._setup_base_waveletshape(freq, 1, zero_mean=True)
             wavelet = self.wavelet_formula(timeline, freq)
-        return normalize(wavelet)
+        return normalize(wavelet, np.sqrt(self.sfreq / 1000))
 
     def make_wavelets(self,  freqs: Numbers) -> np.ndarray:
         '''
@@ -452,8 +453,11 @@ def plot_wavelet(wavelet_obj: Type[WaveletBase], freq: float,
     return fig
 
 
-def plot_tf(data: np.ndarray, vmin: Union[float, None] = None,
-            vmax: Union[float, None] = None,
+def plot_tf(data: np.ndarray,
+            sfreq: float = 1000,
+            frange: Union[None, tuple] = None,
+            trange: Union[None, tuple] = None,
+            vmin: Union[float, None] = None, vmax: Union[float, None] = None,
             cmap: str = 'RdBu_r', show: bool = True) -> plt.Axes:
     '''
     Plot by matplotlib.
@@ -464,8 +468,15 @@ def plot_tf(data: np.ndarray, vmin: Union[float, None] = None,
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     ax.set_aspect('auto')
+    if frange is not None:
+        length = frange[2] / (frange[1] - frange[0]) * data.shape[0]
+        plt.yticks(np.arange(0, data.shape[0], length), np.arange(*frange))
+    if trange is not None:
+        plt.xticks(np.arange(0, data.shape[1], sfreq * trange[2]),
+                   np.arange(*trange))
     image = ax.imshow(data, vmin=vmin, vmax=vmax, cmap=cmap)
     ax.invert_yaxis()
+    ax.set_aspect('auto')
     divider = make_axes_locatable(ax)
     ax_cb = divider.new_horizontal(size="2%", pad=0.05)
     fig.add_axes(ax_cb)
