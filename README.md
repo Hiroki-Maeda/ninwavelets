@@ -6,7 +6,7 @@ This project is just my hobby.
 There may be lots of bugs.  
 **You should not use this package! m9(^q^) PooGyaaaaa!**
 
-![My EEG Power!](img/alpha.png)
+![My EEG Power!](img/alpha.png)  
 This is my alpha band of EEG which was processed by this package.
 
 # Why NinWavelets?
@@ -102,7 +102,8 @@ See 'NinWavelets for MNE'.
 
 These are results from my test code.  
 
-![varisous](img/various.png')
+![various](img/various.png')
+
 ![cwt](img/cwt.png')
 
 # Reference
