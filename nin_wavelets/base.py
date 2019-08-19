@@ -6,9 +6,27 @@ from typing import Union, List, Iterator, Type
 from enum import Enum
 from os import cpu_count
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from multiprocessing import Pool
+from functools import partial
 
 
 Numbers = Union[List[float], np.ndarray, range]
+
+
+class SizeError(BaseException):
+    def __init__(self, err: str) -> None: print(err)
+
+
+def pad_to(wave_from: np.ndarray, wave_to: np.ndarray) -> np.ndarray:
+    from_size = wave_from.shape[0]
+    to_size = wave_to.shape[0]
+    if from_size > to_size:
+        return wave_from[:to_size]
+        raise SizeError('Too big size' + str(from_size) + ':' + str(to_size))
+    else:
+        side1 = (to_size - from_size) // 2
+        side2 = to_size - from_size - side1
+        return np.pad(wave_from, [side1, side2], 'constant')
 
 
 def hamming_window(wave: np.ndarray) -> np.ndarray:
@@ -225,8 +243,7 @@ class WaveletBase:
                                              freqs))
                                      )
         else:
-            self.fft_wavelets = list(map(self.make_fft_wavelet,
-                                         freqs))
+            self.fft_wavelets = list(map(self.make_fft_wavelet, freqs))
         return self.fft_wavelets
 
     def wavelet_formula(self, timeline: np.ndarray, freq: float) -> np.ndarray:
@@ -346,8 +363,8 @@ class WaveletBase:
         self.real_wave_length: float = wave.shape[0] / self.sfreq
         if (not reuse) or (not hasattr(self, 'fft_wavelets')):
             self.make_fft_wavelets(freqs)
-        wavelet = [np.pad(x, [0, wave.shape[0] - x.shape[0]], 'constant')
-                   for x in self.fft_wavelets]
+        pad_wave = partial(pad_to, wave_to=wave)
+        wavelet = list(map(pad_wave, self.fft_wavelets))
         wavelet = cp.asarray(wavelet) if self.cuda else np.array(wavelet)
         fft_wave = cp.fft.fft(cp.asarray(wave)) if self.cuda else fft(wave)
         if self.interpolate:
