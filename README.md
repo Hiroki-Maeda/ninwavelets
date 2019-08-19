@@ -23,9 +23,10 @@ There may be some advantages.
     + You can use it with mne-python.(Now, sensor based only...)
 
 There are some critical limitations, too.  
-See Limitations.  
+See Advantages and Limitations.  
 
 # Install
+
 ```
 pip install git+https://github.com/uesseu/nin_wavelets
 ```
@@ -64,6 +65,7 @@ Destructive changes may be made m9(^q^) PooGyaaaaa!.
 GMW is similar to morlet wavelet, if you use default param.
 
 You can calculate power.
+
 ```
 morse = Morse(1000, gamma=3, beta=17.5)
 freq = 60
@@ -135,8 +137,6 @@ Parameters
 | interpolate | bool  | False   | Interpolate frequencies which is higher than nyquist freq.   |
 | cuda        | bool  | False   | Use cuda or not. See 'Performance of wavelet transform'.     |
 
-
-
 ```python
 morse = Morse()
 ```
@@ -197,6 +197,7 @@ def cwt(self, wave: np.ndarray,
 ```
 
 example
+
 ```python
 import numpy as np
 freq: float = 60
@@ -376,15 +377,22 @@ The formulas may be written in mathmatical papers! ;)
 These formulas are usually complicated like this code.  
 And so, making wavelets takes much time.  
   
-You should not use '**'. You should use np.float_power.  
-You should not use 'e**4'. You should use np.exp.
-These are critical.
+Operator
+```
+**
+```
+is slower than 'np.float_power'.  
+And 'np.float_power' is slower than 'np.exp'.  
+These are critical for speed.  
+There is no method named 'cp.float_power' in cupy.
+And so, I divided method for cupy.
+Name is 'cp_trans_wavelet_formula'. Please write code for cupy in the method.
   
 Optionally, you can write code for cupy.  
 cupy is faster only when data is big.  
 
-I performed benchmark by notepc  
-'Dell G3 15-3579r' with Intel corei7(6core) and Geforce 1050.  
+I performed benchmark test by my NotePC  
+'Dell G3 15-3579r' with Intel corei7(4.1Ghz 6core) and Geforce 1050.  
 
 | Length | back ground | CWT time |
 |--------|-------------|----------|
@@ -396,36 +404,39 @@ I performed benchmark by notepc
 
 
 
-# Limitations
+# Advantages and Limitations
 
-### Method
+## Method
 
 Mathmatically, DFT is not good way.  
 We have no good method to perform Fourier transform by digital computer.  
 Method of convolve is good way for Wavelet transform.  
 But GMW needs Frourier transform.  
-Further more, convolving needs long long loooong time.
-It is not good for Morlet wavelet too.
-There may be some methods.
+Further more, convolving needs long long loooong time.  
+It is not good for Morlet wavelet too.  
+There may be some methods.  
 
 **1**
+
 ```
 Convolve(wave, wavelet)  # Very good, but slow!
 ```
 
 **2**
+
 ```
 iFFT(FFT(wave) * FFT(wavelet))  # Fast, and widely used. But not good. 
 ```
 
 **3**
+
 ```
 iFFT(FFT(wave) * FFTed_wavelet)  # Better and faster than 2.
 ```
 
 I adopted method 3. Not only GMW, but also Morlet wavelet will be performed by 3.
 
-### Hobby
+## It is just my hobby
 It is just my hobby. I am not professional person.  
 Further more, I am not an engineer or PhD or Master.  
 Just a man.  
