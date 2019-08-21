@@ -2,7 +2,6 @@ from .base import WaveletBase, WaveletMode
 from typing import Union, List
 import numpy as np
 import cupy as cp
-from os import cpu_count
 
 
 class Morse(WaveletBase):

@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
 from typing import Union, List, Iterator, Type
 from enum import Enum
-from os import cpu_count
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from multiprocessing import Pool
 from functools import partial
 
 
