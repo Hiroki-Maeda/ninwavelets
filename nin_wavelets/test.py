@@ -41,7 +41,9 @@ def test3d() -> None:
     mm = morlet(1000, [10], zero_mean=True)[0]
     morse_obj = Morse(1000, 17.5, 3)
     morse = morse_obj.make_wavelets([10])[0]
-    nin_morlet = Morlet(1000).make_wavelets([10])[0]
+    nm = Morlet(1000)
+    nm.mode = WaveletMode.Normal
+    nin_morlet = nm.make_wavelets([10])[0]
     fig = plt.figure()
     ax = fig.add_subplot(211)
     half_morse = morse.shape[0] / 2
@@ -98,8 +100,13 @@ def plot_sin_fft() -> None:
     plt.show()
 
 
+def simple_plot_test() -> None:
+    morse = Morse()
+    morse.plot(10)
+
+
 def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
-    sin = make_example(3)
+    sin = make_example(10)
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2)
     ax1.invert_yaxis()
@@ -169,13 +176,14 @@ def eeg() -> None:
     plt.show()
 
 
-
 if __name__ == '__main__':
     # enable_cupy()
     print('Test Run')
     # plot_sin_fft()
     # test()
+    simple_plot_test()
     test3d()
     fft_wavelet_test()
     cwt_test(False, True)
+    cwt_test(True, True)
     eeg()

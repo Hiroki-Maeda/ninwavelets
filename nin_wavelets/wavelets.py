@@ -24,13 +24,6 @@ class Morse(WaveletBase):
         This behaves like sfreq of mne-python.
     b: float | beta value
     r: float | gamma value. 3 may be good value.
-    accuracy: float | Accurancy paramater.
-        It does not make sence when you use fft only.
-        Because, Morse Wavelet needs Inverse Fourier Transform,
-        length of wavelet changes but it is tiring to detect. :(
-        If you use ifft, low frequency causes bad wave.
-        Please check wave by Morse.plot(freq) before use it.
-        If wave is bad, large accuracy can help you.(But needs cpu power)
     length: float | Length of wavelet.
         It does not make sence when you use fft only.
         Too long wavelet causes slow calculation.
@@ -43,23 +36,19 @@ class Morse(WaveletBase):
     '''
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
-                 accuracy: float = 1, real_wave_length: float = 1.,
+                 real_wave_length: float = 1.,
                  interpolate: bool = False, cuda: bool = False) -> None:
-        super(Morse, self).__init__(sfreq, accuracy, real_wave_length,
+        super(Morse, self).__init__(sfreq, real_wave_length,
                                     interpolate, cuda)
         self.r: float = r
         self.b: float = b
         self.mode = WaveletMode.Reverse
         self.help = '''This is inverse Fourier transformed MorseWavelet.
-                    Originally, Generalized Morse wavelet is
-                    Frourier transformed wave.
-                    It should be used as it is Fourier transformed data.
-                    But, you can use it in the same way as'
-                    MorletWavelet by IFFT.
-                    If wave continues to side of the window, wave is bad.
-                    Please set larger value to param
-                    accuracy" and "length"
-                    It becomes bad easily when frequency is low.'''
+Originally, Generalized Morse wavelet is
+Frourier transformed wave.
+It should be used as it is Fourier transformed data.
+But, you can use it in the same way as'
+MorletWavelet by IFFT.'''
 
     def cp_trans_wavelet_formula(self, freqs: cp.ndarray,
                                  freq: float = 1.) -> cp.ndarray:
@@ -104,17 +93,13 @@ class Morlet(WaveletBase):
 
     Parameters
     ----------
-    sfreq: float | Sampling frequency.
+    sfreq: float
+        Sampling frequency.
         This behaves like sfreq of mne-python.
-    sigma: float | sigma value
-    accuracy: float | Accurancy paramater.
-        It does not make sence when you use fft only.
-        Because, Morse Wavelet needs Inverse Fourier Transform,
-        length of wavelet changes but it is tiring to detect. :(
-        If you use ifft, low frequency causes bad wave.
-        Please check wave by Morse.plot(freq) before use it.
-        If wave is bad, large accuracy can help you.(But needs cpu power)
-    length: float | Length of wavelet.
+    sigma: float
+        sigma value
+    length: float
+        Length of wavelet.
         It does not make sence when you use fft only.
         Too long wavelet causes slow calculation.
         This param is cutting threshould of wavelets.
@@ -126,10 +111,10 @@ class Morlet(WaveletBase):
     '''
 
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
-                 accuracy: float = 1., real_wave_length: float = 1.,
+                 real_wave_length: float = 1.,
                  gabor: bool = False, interpolate: bool = False,
                  cuda: bool = False) -> None:
-        super(Morlet, self).__init__(sfreq, accuracy, real_wave_length,
+        super(Morlet, self).__init__(sfreq, real_wave_length,
                                      interpolate, cuda)
         self.mode = WaveletMode.Both
         self.sigma = sigma
@@ -174,23 +159,19 @@ class MorseMNE(Morse):
     '''
 
     def __init__(self, sfreq: float = 1000, b: float = 17.5, r: float = 3,
-                 accuracy: float = 1., real_wave_length: float = 1.,
+                 real_wave_length: float = 1.,
                  interpolate: bool = False, cuda: bool = False) -> None:
-        super(MorseMNE, self).__init__(sfreq, accuracy, real_wave_length,
+        super(MorseMNE, self).__init__(sfreq, real_wave_length,
                                        interpolate, cuda)
         self.r: float = r
         self.b: float = b
         self.mode = WaveletMode.Reverse
         self.help = '''This is inverse Fourier transformed MorseWavelet.
-                    Originally, Generalized Morse wavelet is
-                    Frourier transformed wave.
-                    It should be used as it is Fourier transformed data.
-                    But, you can use it in the same way as'
-                    MorletWavelet by IFFT.
-                    If wave continues to side of the window, wave is bad.
-                    Please set larger value to param
-                    accuracy" and "length"
-                    It becomes bad easily when frequency is low.'''
+Originally, Generalized Morse wavelet is
+Frourier transformed wave.
+It should be used as it is Fourier transformed data.
+But, you can use it in the same way as'
+MorletWavelet by IFFT.'''
 
     def cwt(self, wave: np.ndarray,
             freqs: Union[List[float], range, np.ndarray],
@@ -218,10 +199,9 @@ class MorseMNE(Morse):
 
 class Haar(WaveletBase):
     def __init__(self, sfreq: float = 1000,
-                 accuracy: float = 1., real_wave_length: float = 1.,
+                 real_wave_length: float = 1.,
                  interpolate: bool = False) -> None:
-        super(Haar, self).__init__(sfreq, accuracy,
-                                   real_wave_length, interpolate)
+        super(Haar, self).__init__(sfreq, real_wave_length, interpolate)
         self.mode = WaveletMode.Normal
 
     def wavelet_formula(self, timeline: np.ndarray,

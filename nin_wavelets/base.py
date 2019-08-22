@@ -102,7 +102,7 @@ class WaveletBase:
     self._make_fft_wavelet : returns np.ndarray
     self.make_wavelet : returns np.ndarray
     '''
-    def __init__(self, sfreq: float = 1000, accuracy: float = 1.,
+    def __init__(self, sfreq: float = 1000,
                  real_wave_length: float = 1.,
                  interpolate: bool = True, cuda: bool = False) -> None:
         '''
@@ -110,15 +110,11 @@ class WaveletBase:
         ----------
         sfreq: float
             Sampling frequency.
-        accuracy: float
-            This value affects only when you plot the wavelet or
-            you make wavelet in depricated way.
         real_wave_length: float
             Length of wavelet. When this class run cwt,
             this will be automatically changed.
         '''
         self.mode: WaveletMode = WaveletMode.Normal
-        self.accuracy: float = accuracy
         self.sfreq: float = sfreq
         self.help: str = ''
         self.real_wave_length: float = real_wave_length
@@ -128,7 +124,8 @@ class WaveletBase:
         self.cuda = cuda
 
     def _setup_base_trans_waveshape(self, freq: float,
-                                    real_wave_length: float) -> np.ndarray:
+                                    real_wave_length: float,
+                                    cuda: float) -> np.ndarray:
         '''
         Setup wave shape.
         real_length is length of wavelet(for example, sec or msec)
@@ -146,11 +143,9 @@ class WaveletBase:
         np.ndarray
             Timeline to calculate wavelet.
         '''
-        one: float = 1 / freq / self.accuracy
+        one: float = 1 / freq
         total: float = self.sfreq / freq * real_wave_length
-        if self.cuda:
-            return cp.arange(0, total, one)
-        return np.arange(0, total, one, dtype=np.float)
+        return cp.arange(0, total, one) if cuda else np.arange(0, total, one)
 
     def _setup_base_waveletshape(self, freq: float, real_length: float = 1,
                                  zero_mean: bool = False) -> np.ndarray:
@@ -177,7 +172,8 @@ class WaveletBase:
     def peak_freq(self, freq: float) -> float:
         return 1.
 
-    def make_fft_wavelet(self, freq: float = 1.) -> np.ndarray:
+    def make_fft_wavelet(self, freq: float,
+                         real_length: float = 1.) -> np.ndarray:
         ''' Make single FFTed wavelet.
 
         Parameters
@@ -189,27 +185,23 @@ class WaveletBase:
         -------
         np.ndarray[np.complex128, ndim=1]: FFTed Wavelet.
         '''
+        hstack = cp.hstack if self.cuda else np.hstack
+        if self.cuda:
+            formula = self.cp_trans_wavelet_formula
+        else:
+            formula = self.trans_wavelet_formula
         if self.mode in [WaveletMode.Reverse, WaveletMode.Both]:
             if self.interpolate:
-                t = self._setup_base_trans_waveshape(self.real_wave_length,
-                                                     self.real_wave_length / 2)
-                if self.cuda:
-                    result = self.cp_trans_wavelet_formula(t, freq)
-                else:
-                    result = self.trans_wavelet_formula(t, freq)
-                if self.cuda:
-                    result = cp.hstack((result, np.zeros(len(t))))
-                else:
-                    result = np.hstack((result, np.zeros(len(t))))
+                t = self._setup_base_trans_waveshape(real_length,
+                                                     real_length / 2,
+                                                     self.cuda)
+                result = hstack((formula(t, freq), np.zeros(len(t))))
             else:
-                t = self._setup_base_trans_waveshape(self.real_wave_length,
-                                                     self.real_wave_length)
-                if self.cuda:
-                    result = self.cp_trans_wavelet_formula(t, freq)
-                else:
-                    result = self.trans_wavelet_formula(t, freq)
-            if self.cuda:
-                return normalize(cp.asnumpy(result), np.sqrt(self.sfreq/1000))
+                t = self._setup_base_trans_waveshape(real_length,
+                                                     real_length,
+                                                     self.cuda)
+                result = formula(t, freq)
+            result = cp.asnumpy(result) if self.cuda else result
             return normalize(result, np.sqrt(self.sfreq/1000))
         else:
             wavelet = self.make_wavelet(freq)
@@ -217,8 +209,7 @@ class WaveletBase:
                         - wavelet.shape[0]) / 2)
             wavelet = np.hstack((np.zeros(half), wavelet, np.zeros(half)))
             result = fft(wavelet)
-            result.imag = np.abs(result.imag)
-            result.real = np.abs(result.real)
+            result.imag, result.real = np.abs(result.imag), np.abs(result.real)
             return normalize(result, np.sqrt(self.sfreq / 1000))
 
     def make_fft_wavelets(self, freqs: Numbers) -> List[np.ndarray]:
@@ -235,13 +226,13 @@ class WaveletBase:
         np.ndarray[np.complex128, ndim=1]: FFTed Wavelet.
         '''
         self.freq_dist = freqs[1] - freqs[0]
+        make_w = partial(self.make_fft_wavelet,
+                         real_length=self.real_wave_length)
         if self.interpolate:
-            self.fft_wavelets = list(map(interpolate_alias,
-                                         map(self.make_fft_wavelet,
-                                             freqs))
-                                     )
+            fft_wavelets = map(make_w, freqs)
+            self.fft_wavelets = list(map(interpolate_alias, fft_wavelets))
         else:
-            self.fft_wavelets = list(map(self.make_fft_wavelet, freqs))
+            self.fft_wavelets = list(map(make_w, freqs))
         return self.fft_wavelets
 
     def wavelet_formula(self, timeline: np.ndarray, freq: float) -> np.ndarray:
@@ -311,12 +302,11 @@ class WaveletBase:
 
     def make_wavelet(self, freq: float) -> np.ndarray:
         if self.mode in [WaveletMode.Reverse, WaveletMode.Twice]:
-            t = self._setup_base_trans_waveshape(freq, self.real_wave_length)
-            wave = self.trans_wavelet_formula(t)
-            wavelet = ifft(wave)
+            t = self._setup_base_trans_waveshape(freq, self.real_wave_length,
+                                                 self.cuda)
+            wavelet = ifft(self.trans_wavelet_formula(t))
             half = int(wavelet.shape[0])
-            start = half // 2
-            stop = half // 2 * 3
+            start, stop = half // 2, half // 2 * 3
             total_wavelet = np.hstack((np.conj(np.flip(wavelet)), wavelet))
             wavelet = total_wavelet[start: stop]
         else:
@@ -341,8 +331,7 @@ class WaveletBase:
         self.wavelets = list(map(self.make_wavelet, freqs))
         return self.wavelets
 
-    def cwt(self, wave: np.ndarray,
-            freqs: Union[Numbers, None], max_freq: int = 0,
+    def cwt(self, wave: np.ndarray, freqs: Union[Numbers, None],
             reuse: bool = True) -> np.ndarray:
         '''cwt
         Run CWT.
@@ -361,6 +350,7 @@ class WaveletBase:
         self.real_wave_length: float = wave.shape[0] / self.sfreq
         if (not reuse) or (not hasattr(self, 'fft_wavelets')):
             self.make_fft_wavelets(freqs)
+        self.real_wave_length = 1.
         pad_wave = partial(pad_to, wave_to=wave)
         wavelet = list(map(pad_wave, self.fft_wavelets))
         wavelet = cp.asarray(wavelet) if self.cuda else np.array(wavelet)
@@ -369,15 +359,11 @@ class WaveletBase:
             fft_wave = interpolate_alias(fft_wave, cuda=self.cuda)
         # Keep powerful even if long wave.
         fft_wave *= np.sqrt(wave.shape[0] / self.sfreq)
-        # result = [ifft(x * fft_wave) for x in wavelet]
         if self.cuda:
             result = cp.asnumpy(cp.fft.ifft(wavelet * fft_wave))
         else:
             result = ifft(wavelet * fft_wave)
-        if max_freq == 0:
-            max_freq = int(self.sfreq / self.freq_dist)
-        self.real_wave_length = 1.
-        return result[:max_freq]
+        return result
 
     def power(self, wave: np.ndarray,
               freqs: Union[Numbers, None] = None, max_freq: int = 0,
@@ -396,7 +382,7 @@ class WaveletBase:
         -------
         Result of cwt. np.ndarray.
         '''
-        return self.abs(wave, freqs, max_freq, reuse) ** 2
+        return self.abs(wave, freqs, reuse) ** 2
 
     def abs(self, wave: np.ndarray,
             freqs: Union[Numbers, None] = None, max_freq: int = 0,
@@ -415,7 +401,7 @@ class WaveletBase:
         -------
         Result of cwt. np.ndarray.
         '''
-        return np.abs(self.cwt(wave, freqs, max_freq, reuse))
+        return np.abs(self.cwt(wave, freqs, reuse))
 
     def plot(self, freq: float, show: bool = True) -> plt.figure:
         return plot_wavelet(self, freq, show)
