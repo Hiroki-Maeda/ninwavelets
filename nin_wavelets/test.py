@@ -106,7 +106,7 @@ def simple_plot_test() -> None:
 
 
 def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
-    sin = make_example(10)
+    sin = make_example(30)
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2)
     ax1.invert_yaxis()

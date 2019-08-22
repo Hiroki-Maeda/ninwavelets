@@ -50,7 +50,7 @@ It should be used as it is Fourier transformed data.
 But, you can use it in the same way as'
 MorletWavelet by IFFT.'''
 
-    def cp_trans_wavelet_formula(self, freqs: cp.ndarray,
+    def cp_trans_formula(self, freqs: cp.ndarray,
                                  freq: float = 1.) -> cp.ndarray:
         np_freqs = cp.asnumpy(freqs)
         step = cp.asarray(np.heaviside(np_freqs, np_freqs))
@@ -62,7 +62,7 @@ MorletWavelet by IFFT.'''
                             )) / cp.pi
         return wave
 
-    def trans_wavelet_formula(self, freqs: np.ndarray,
+    def trans_formula(self, freqs: np.ndarray,
                               freq: float = 1.) -> np.ndarray:
         '''
         Make Fourier transformed morse wavelet.
@@ -125,7 +125,7 @@ class Morlet(WaveletBase):
                                 -1/2)
         self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
 
-    def cp_trans_wavelet_formula(self, freqs: cp.ndarray,
+    def cp_trans_formula(self, freqs: cp.ndarray,
                                  freq: float = 1.) -> cp.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
         result = (self.c * cp.pi ** (-1/4) *
@@ -133,14 +133,14 @@ class Morlet(WaveletBase):
                    self.k * cp.exp(-cp.square(freqs) / 2)))
         return result
 
-    def trans_wavelet_formula(self, freqs: np.ndarray,
+    def trans_formula(self, freqs: np.ndarray,
                               freq: float = 1) -> np.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
         return (self.c * np.float_power(np.pi, (-1/4)) *
                 (np.exp(-np.square(self.sigma-freqs) / 2) -
                  self.k * np.exp(-np.square(freqs) / 2)))
 
-    def wavelet_formula(self, timeline: np.ndarray,
+    def formula(self, timeline: np.ndarray,
                         freq: float = 1) -> np.ndarray:
         return (self.c * np.float_power(np.pi, (-1 / 4))
                 * np.exp(-np.square(timeline) / 2)
@@ -204,7 +204,7 @@ class Haar(WaveletBase):
         super(Haar, self).__init__(sfreq, real_wave_length, interpolate)
         self.mode = WaveletMode.Normal
 
-    def wavelet_formula(self, timeline: np.ndarray,
+    def formula(self, timeline: np.ndarray,
                         freq: float = 1) -> np.ndarray:
         for key, value in enumerate(timeline):
             if (0. < value) and (value <= 1.):
