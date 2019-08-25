@@ -2,9 +2,10 @@
 This is a python package for analystic wavelet transform.  
 Generalized Morse(GMW), Morlet and so on.  
 It can also perform CWT based on GMW.  
-This project is just my hobby.  
-There may be lots of bugs.  
-**You should not use this package! m9(^q^) PooGyaaaaa!**
+
+This project is just my hobby, and I am not an engineer or scholar.  
+There may be lots of bugs. Ofcource it is free to use.  
+**BUT you should not use this package for work! m9(^q^) PooGyaaaaa!**
 
 ![My EEG Power!](img/alpha.png)  
 This is my alpha band of EEG which was processed by this package.
@@ -277,8 +278,8 @@ You can inherit this class and make new wavelets.
 
 After inherit this, you can edit these methods.  
 
-- BaseWavelet.wavelet_formula
-- BaseWavelet.trans_wavelet_formula
+- BaseWavelet.formula
+- BaseWavelet.trans_formula
 - BaseWavelet.peak_freq
 
 At first, you need to overwrite them.
@@ -345,7 +346,7 @@ class Morlet(WaveletBase):
                                 -1/2)
         self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
 
-    def cp_trans_wavelet_formula(self, freqs: cp.ndarray,
+    def cp_trans_formula(self, freqs: cp.ndarray,
                                  freq: float = 1.) -> cp.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
         result = (self.c * cp.pi ** (-1/4) *
@@ -353,14 +354,14 @@ class Morlet(WaveletBase):
                    self.k * cp.exp(-cp.square(freqs) / 2)))
         return result
 
-    def trans_wavelet_formula(self, freqs: np.ndarray,
+    def trans_formula(self, freqs: np.ndarray,
                               freq: float = 1) -> np.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
         return (self.c * np.float_power(np.pi, (-1/4)) *
                 (np.exp(-np.square(self.sigma-freqs) / 2) -
                  self.k * np.exp(-np.square(freqs) / 2)))
 
-    def wavelet_formula(self, timeline: np.ndarray,
+    def formula(self, timeline: np.ndarray,
                         freq: float = 1) -> np.ndarray:
         return (self.c * np.float_power(np.pi, (-1 / 4))
                 * np.exp(-np.square(timeline) / 2)
@@ -386,7 +387,7 @@ And 'np.float_power' is slower than 'np.exp'.
 These are critical for speed.  
 There is no method named 'cp.float_power' in cupy.
 And so, I divided method for cupy.
-Name is 'cp_trans_wavelet_formula'. Please write code for cupy in the method.
+Name is 'cp_trans_formula'. Please write code for cupy in the method.
   
 Optionally, you can write code for cupy.  
 cupy is faster only when data is big.  
