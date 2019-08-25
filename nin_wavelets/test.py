@@ -9,6 +9,7 @@ from nin_wavelets.base import interpolate_alias
 from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf
 from mne.io import Raw
 import gc
+from sys import argv
 
 
 def make_example(length: float = 3) -> np.ndarray:
@@ -40,45 +41,29 @@ def test3d() -> None:
     go = morlet(1000, [10])[0]
     mm = morlet(1000, [10], zero_mean=True)[0]
     morse_obj = Morse(1000, 17.5, 3)
-    morse = morse_obj.make_wavelets([10])[0]
+    morse = morse_obj.make_wavelet(10)
     nm = Morlet(1000)
-    nm.mode = WaveletMode.Normal
-    nin_morlet = nm.make_wavelets([10])[0]
+#    nm.mode = WaveletMode.Normal
+    nin_morlet = nm.make_wavelet(10)
+
+    half_morse = morse.shape[0] / 2
+    morse_time = np.arange(-half_morse, half_morse, 1)
+    half_mm = mm.shape[0] / 2
+    morlet_time = np.arange(-half_mm, half_mm, 1)
     fig = plt.figure()
     ax = fig.add_subplot(211)
-    half_morse = morse.shape[0] / 2
-    half_mm = mm.shape[0] / 2
-    ax.plot(np.arange(-half_morse, half_morse, 1),
-            morse,
-            label='Morse Wavelet')
-    ax.plot(np.arange(-half_morse, half_morse, 1),
-            nin_morlet,
-            label='Morlet Wavelet')
-    ax.plot(np.arange(-half_morse, half_morse, 1),
-            morse.imag,
-            label='Morse Imag')
-    ax.plot(np.arange(-half_mm, half_mm, 1),
-            mm,
-            label='Morlet')
-    ax.plot(np.arange(-half_mm, half_mm, 1),
-            mm.imag,
-            label='Morlet imag')
-    ax.plot(np.arange(-half_mm, half_mm, 1),
-            go,
-            label='Gabor Wavelet')
+
+    ax.plot(morse_time, morse, label='Morse Wavelet')
+    ax.plot(morse_time, nin_morlet, label='Morlet Wavelet')
+    ax.plot(morse_time, morse.imag, label='Morse Imag')
+    ax.plot(morlet_time, mm, label='MNE Morlet')
+    ax.plot(morlet_time, mm.imag, label='MNE Morlet imag')
+    ax.plot(morlet_time, go, label='Gabor Wavelet')
+
     ax1 = fig.add_subplot(212, projection='3d')
-    ax1.scatter3D(morse.real,
-                  np.arange(-half_morse, half_morse, 1),
-                  morse.imag,
-                  label='morse')
-    ax1.scatter3D(mm.real,
-                  np.arange(-half_mm, half_mm, 1),
-                  mm.imag,
-                  label='morlet')
-    ax1.scatter3D(go.real,
-                  np.arange(-half_mm, half_mm, 1),
-                  go.imag,
-                  label='gobar')
+    ax1.scatter3D(morse.real, morse_time, morse.imag, label='morse')
+    ax1.scatter3D(mm.real, morlet_time, mm.imag, label='MNE morlet')
+    ax1.scatter3D(go.real, morlet_time, go.imag, label='gobar')
     handler, label = ax.get_legend_handles_labels()
     handler1, label1 = ax1.get_legend_handles_labels()
     ax.legend(label+label1, loc='upper right')
@@ -106,7 +91,7 @@ def simple_plot_test() -> None:
 
 
 def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
-    sin = make_example(30)
+    sin = make_example(10)
     ax1 = plt.subplot(2, 1, 1)
     ax2 = plt.subplot(2, 1, 2)
     ax1.invert_yaxis()
@@ -138,7 +123,9 @@ def fft_wavelet_test() -> None:
     b = 17.5
     s = 7
     morse = Morse(r=r, b=b)
-    morlet = Morlet(sigma=s, sfreq=500)
+    morlet = Morlet(sigma=s, sfreq=1000)
+    normal_morlet = Morlet(sigma=s, sfreq=1000)
+    normal_morlet.mode = WaveletMode.Normal
     fig = plt.figure()
     w = morse.make_wavelet(hz)
     a = morse.make_fft_wavelet(hz)
@@ -149,9 +136,9 @@ def fft_wavelet_test() -> None:
     ax.plot(a, label='FFTed Generalized Morse wavelet')
     ax.plot(b, label='Morlet wavelet')
     ax.plot(b.imag, label='Morlet wavelet')
-    # ax.plot(np.abs(c), label='FFTed Morlet wavelet abs')
     ax.plot(np.abs(c.real), label='FFTed Morlet wavelet')
     ax.plot(c.imag, label='imag of FFTed Morlet wavelet')
+    ax.plot(normal_morlet.make_wavelet(hz), label='MorseWavelet Normal Mode')
     handler, label = ax.get_legend_handles_labels()
     ax.legend(label, loc='upper right')
     plt.show()
@@ -181,9 +168,10 @@ if __name__ == '__main__':
     print('Test Run')
     # plot_sin_fft()
     # test()
-    simple_plot_test()
-    test3d()
-    fft_wavelet_test()
-    cwt_test(False, True)
-    cwt_test(True, True)
-    eeg()
+    if 'wave' in argv:
+        simple_plot_test()
+        test3d()
+        fft_wavelet_test()
+    if 'cwt' in argv:
+        cwt_test(False, True) if 'cuda' in argv else cwt_test(False, False)
+        eeg()

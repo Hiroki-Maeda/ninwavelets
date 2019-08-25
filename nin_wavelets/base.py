@@ -2,13 +2,14 @@ import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
-from typing import Union, List, Iterator, Type
+from typing import Union, List, Iterator, Type, Callable
 from enum import Enum
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from functools import partial
+from functools import partial, lru_cache
 
 
 Numbers = Union[List[float], np.ndarray, range]
+MNE_CONSTANT = np.sqrt(2)
 
 
 class SizeError(BaseException):
@@ -16,11 +17,9 @@ class SizeError(BaseException):
 
 
 def pad_to(wave_from: np.ndarray, wave_to: np.ndarray) -> np.ndarray:
-    from_size = wave_from.shape[0]
-    to_size = wave_to.shape[0]
+    from_size, to_size = wave_from.shape[0], wave_to.shape[0]
     if from_size > to_size:
         return wave_from[:to_size]
-        raise SizeError('Too big size' + str(from_size) + ':' + str(to_size))
     else:
         side1 = (to_size - from_size) // 2
         side2 = to_size - from_size - side1
@@ -33,7 +32,8 @@ def hamming_window(wave: np.ndarray) -> np.ndarray:
     return 0.54 - 0.46 * np.cos(2 * np.pi * window)
 
 
-def normalize(wave: np.ndarray, length: float) -> np.ndarray:
+def normalize(wave: np.ndarray, length: float,
+              cuda: bool = False) -> np.ndarray:
     ''' Normalize norm of complex array
 
     Parameters
@@ -45,9 +45,7 @@ def normalize(wave: np.ndarray, length: float) -> np.ndarray:
     -------
     np.ndarray[np.complex128, ndim=1]: Normalized wave.
     '''
-    wave /= np.linalg.norm(wave.ravel()) * np.sqrt(0.5)
-    wave *= length
-    return wave
+    return wave * length / np.linalg.norm(wave)
 
 
 def interpolate_alias(wave: Union[cp.ndarray, np.ndarray],
@@ -64,10 +62,9 @@ def interpolate_alias(wave: Union[cp.ndarray, np.ndarray],
     -------
     np.ndarray[np.complex128, ndim=1]: Interpolated wave.
     '''
-    half_size: int = int(wave.shape[0] / 2)
-    pad = cp.pad if cuda else np.pad
-    return pad(wave[:half_size], [0, wave.shape[0] - half_size],
-               'constant', constant_values=0)
+    half: int = int(wave.shape[0] / 2)
+    pad: Callable = cp.pad if cuda else np.pad
+    return pad(wave[:half], [0, wave.shape[0] - half], 'constant')
 
 
 class WaveletMode(Enum):
@@ -96,8 +93,7 @@ class WaveletBase:
     self._make_fft_wavelet : returns np.ndarray
     self.make_wavelet : returns np.ndarray
     '''
-    def __init__(self, sfreq: float = 1000,
-                 real_wave_length: float = 1.,
+    def __init__(self, sfreq: float = 1000, real_wave_length: float = 1.,
                  interpolate: bool = True, cuda: bool = False) -> None:
         '''
         Parameters
@@ -190,7 +186,7 @@ class WaveletBase:
                                             real_length, self.cuda)
                 result = formula(t, freq)
             result = cp.asnumpy(result) if self.cuda else result
-            return normalize(result, np.sqrt(self.sfreq/1000))
+            return normalize(result, self.sfreq/1000)
         else:
             wavelet = self.make_wavelet(freq)
             half = int((self.sfreq * self.real_wave_length
@@ -198,7 +194,7 @@ class WaveletBase:
             wavelet = np.hstack((np.zeros(half), wavelet, np.zeros(half)))
             result = fft(wavelet)
             result.imag, result.real = np.abs(result.imag), np.abs(result.real)
-            return normalize(result, np.sqrt(self.sfreq / 1000))
+            return normalize(result, self.sfreq / 1000)
 
     def make_fft_wavelets(self, freqs: Numbers,
                           real_wave_length: float = 1.) -> List[np.ndarray]:
@@ -299,7 +295,7 @@ class WaveletBase:
         else:
             timeline = self._setup_waveletshape(freq, 1, zero_mean=True)
             wavelet = self.formula(timeline, freq)
-        return normalize(wavelet, np.sqrt(self.sfreq / 1000))
+        return normalize(wavelet, self.sfreq / 1000) * MNE_CONSTANT
 
     def make_wavelets(self,  freqs: Numbers) -> np.ndarray:
         '''
@@ -343,15 +339,14 @@ class WaveletBase:
         if self.interpolate:
             fft_wave = interpolate_alias(fft_wave, cuda=self.cuda)
         # Keep powerful even if long wave.
-        fft_wave *= np.sqrt(wave.shape[0] / self.sfreq)
+        fft_wave *= wave.shape[0] / self.sfreq
         if self.cuda:
             result = cp.asnumpy(cp.fft.ifft(wavelet * fft_wave))
         else:
             result = ifft(wavelet * fft_wave)
         return result
 
-    def power(self, wave: np.ndarray,
-              freqs: Union[Numbers, None] = None, max_freq: int = 0,
+    def power(self, wave: np.ndarray, freqs: Union[Numbers, None] = None,
               reuse: bool = True) -> np.ndarray:
         '''
         Run cwt and compute power.
@@ -369,8 +364,7 @@ class WaveletBase:
         '''
         return self.abs(wave, freqs, reuse) ** 2
 
-    def abs(self, wave: np.ndarray,
-            freqs: Union[Numbers, None] = None, max_freq: int = 0,
+    def abs(self, wave: np.ndarray, freqs: Union[Numbers, None] = None,
             reuse: bool = True) -> np.ndarray:
         '''
         Run cwt and compute power.
@@ -392,7 +386,7 @@ class WaveletBase:
         return plot_wavelet(self, freq, show)
 
 
-def plot_wavelet(wavelet_obj: Type[WaveletBase], freq: float,
+def plot_wavelet(wavelet_obj: WaveletBase, freq: float,
                  show: bool = True) -> plt.figure:
     '''
     Plot wavelet.
