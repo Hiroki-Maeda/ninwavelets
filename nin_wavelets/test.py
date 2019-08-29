@@ -101,7 +101,7 @@ def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
     nin_morlet = Morlet(interpolate=interpolate, cuda=cuda, sfreq=500)
     nin_morlet.mode = WaveletMode.Both
 
-    result_morse = morse.power(sin, range(1000))
+    result_morse = morse.power(sin, range(1, 1000))
     result_morlet = nin_morlet.power(sin, np.arange(1., 1000, 1))
 
     vmax = 0.03
