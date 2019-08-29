@@ -2,10 +2,9 @@ import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
-from typing import Union, List, Iterator, Type, Callable
+from typing import Union, List, Iterator, Callable
 from enum import Enum
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from functools import partial, lru_cache
 
 
 Numbers = Union[List[float], np.ndarray, range]
