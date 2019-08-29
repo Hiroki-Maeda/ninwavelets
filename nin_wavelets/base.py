@@ -5,6 +5,7 @@ from scipy.fftpack import ifft, fft
 from typing import Union, List, Iterator, Callable
 from enum import Enum
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from functools import partial
 
 
 Numbers = Union[List[float], np.ndarray, range]
@@ -173,6 +174,8 @@ class WaveletBase:
         -------
         np.ndarray[np.complex128, ndim=1]: FFTed Wavelet.
         '''
+        if freq == 0:
+            raise ZeroDivisionError
         hstack = cp.hstack if self.cuda else np.hstack
         formula = self.cp_trans_formula if self.cuda else self.trans_formula
         if self.mode in [WaveletMode.Reverse, WaveletMode.Both]:
@@ -284,6 +287,8 @@ class WaveletBase:
         return freqs
 
     def make_wavelet(self, freq: float) -> np.ndarray:
+        if freq == 0:
+            raise ZeroDivisionError
         if self.mode in [WaveletMode.Reverse, WaveletMode.Twice]:
             t = self._setup_trans_shape(freq, self.real_wave_length, self.cuda)
             wavelet = ifft(self.trans_formula(t))
