@@ -127,6 +127,9 @@ def other_wavelet_test() -> None:
     plt.plot(shannon)
     plt.plot(morlet)
     plt.show()
+    plt.plot(np.abs(fft(shannon)))
+    plt.plot(np.abs(fft(morlet)))
+    plt.show()
 
 
 def fft_wavelet_test() -> None:

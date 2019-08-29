@@ -67,10 +67,12 @@ GMW is similar to morlet wavelet, if you use default param.
 
 You can calculate power.
 
-```
+```python
 morse = Morse(1000, gamma=3, beta=17.5)
 freq = 60
 time = np.arange(0, 0.3, 0.001)
+
+# Now lets analyze sin wave!
 sin = np.array([np.sin(time * freq * 2 * np.pi)])
 
 result = morse.power(sin, range(1, 100))

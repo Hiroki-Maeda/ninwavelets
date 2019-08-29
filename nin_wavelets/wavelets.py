@@ -126,7 +126,7 @@ class Morlet(WaveletBase):
         self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
 
     def cp_trans_formula(self, freqs: cp.ndarray,
-                                 freq: float = 1.) -> cp.ndarray:
+                         freq: float = 1.) -> cp.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
         result = (self.c * cp.pi ** (-1/4) *
                   (cp.exp(-cp.square(self.sigma-freqs) / 2) -
@@ -254,19 +254,16 @@ class Shannon(WaveletBase):
         super(Shannon, self).__init__(sfreq, real_wave_length,
                                       interpolate, cuda)
         self.sigma: float = sigma
-        self.mode = WaveletMode.Normal
+        self.mode = WaveletMode.Reverse
         self.help = ''
 
-    def formula(self, tc: np.ndarray, freq: float = 1) -> np.ndarray:
-        tc /= freq
-        return (np.sinc(self.sigma * tc) * np.exp(2 * np.pi * 1j * tc))
-
-    def cp_formula(self, tc: np.ndarray, freq: float = 1) -> np.ndarray:
-        tc /= freq
-        return (np.sinc(self.sigma * tc) * np.exp(2 * np.pi * 1j * tc))
-
-    def peak_freq(self, freq: float) -> float:
-        return np.pi / 2
+    def trans_formula(self, tc: np.ndarray, freq: float = 1) -> np.ndarray:
+        for key, value in enumerate(tc):
+            if value <= 1.:
+                tc[key] = 1.
+            else:
+                tc[key] = 0
+        return tc
 
 
 class Haar(WaveletBase):
@@ -276,8 +273,7 @@ class Haar(WaveletBase):
         super(Haar, self).__init__(sfreq, real_wave_length, interpolate)
         self.mode = WaveletMode.Normal
 
-    def formula(self, timeline: np.ndarray,
-                        freq: float = 1) -> np.ndarray:
+    def formula(self, timeline: np.ndarray, freq: float = 1) -> np.ndarray:
         for key, value in enumerate(timeline):
             if (0. < value) and (value <= 1.):
                 timeline[key] = 1.
