@@ -14,8 +14,10 @@ This is my alpha band of EEG which was processed by this package.
 There may be some advantages.
 
 - Use wavelets which is originally Frourier transformed
-    + Generalized Morse Wavelets, and so on.
-    + Scalable(?)
+    + Generalized Morse
+    + Morlet/Gabor(Frourier transformed version)
+    + Shannon(It looks like Haar, when fourier transformed)
+    + May be more(It is scalable)
 - Skipping one FFT when performing CWT.
     + May be better and faster if you use FFT method.
 - Cuda
@@ -28,7 +30,7 @@ See Advantages and Limitations.
 
 # Install
 
-```
+```bash
 pip install git+https://github.com/uesseu/nin_wavelets
 ```
 
@@ -49,7 +51,7 @@ Optionally, if you want to process EEG/MEG, you can use this.
 
 - mne
 
-```
+```bash
 pip install mne
 ```
 
@@ -62,7 +64,7 @@ It is brand new project, and under heavily development.
 Destructive changes may be made m9(^q^) PooGyaaaaa!.  
 
 
-# Exsample
+# Exsamples
 GMW is similar to morlet wavelet, if you use default param.
 
 You can calculate power.
@@ -112,10 +114,15 @@ These are results from my test code.
 ![cwt](img/cwt.png)
 
 # Reference
-## Morse Class
+## WaveletClasses
 
-This is a class to GMW.
-Sub class of WaveletBase.
+They are classes for wavelet.  
+They are sub class of WaveletBase.  
+You can inherit 'WaveletBase' class and make your own wavelet.  
+I wrote some wavelets.  
+
+For example, lets see Morse class!  
+
 
 ```python
 from nin_wavelets import Morse
@@ -124,7 +131,7 @@ from nin_wavelets import Morse
 ```python
 Morse(self, sfreq: float = 1000,
       b: float = 17.5, r: float = 3,
-      length: float = 10, accuracy: float = 1,
+      length: float = 10,
       interpolate=False, cuda: bool = False) -> None:
 ```
 
@@ -135,7 +142,6 @@ Parameters
 | sfreq       | float | 1000Hz  | Sampling frequency.                                          |
 | b           | float | 17.5    | beta value                                                   |
 | r           | float | 3       | gamma value. 3 may be good value.                            |
-| accuracy    | float | 1       | Accurancy paramater. It affects only when you plot wavelets. |
 | length      | float | 10      | Length paramater. It affects only when you plot wavelets.    |
 | interpolate | bool  | False   | Interpolate frequencies which is higher than nyquist freq.   |
 | cuda        | bool  | False   | Use cuda or not. See 'Performance of wavelet transform'.     |
@@ -144,9 +150,19 @@ Parameters
 morse = Morse()
 ```
 
-interpolate=True makes your code faster.
-(Up to half time)
-But, I dont know whether it is good or bad...
+interpolate=True makes your code faster.  
+(Up to half time)  
+But, I dont know whether it is good or bad...  
+
+This is an example.  
+List of wavelet classes is this.
+
+| Name              | Name in this package             |
+|-------------------|----------------------------------|
+| Generalized Morse | Morse                            |
+| Complex Morlet    | Morlet                           |
+| Complex Shannon   | Shannon                          |
+| Gausian(Gabor)    | Morlet(gabor option is available |
 
 ### make_wavelets
 
@@ -166,7 +182,6 @@ Because it returnes bad wave easily,
 you should use it when you plot it only.  
 For example, GMW with sfreq=1000, freq=3 returnes bad wave.  
 If you want good wave, you must set  
-large accuracy and length when you make this instance.  
 
 Returns  
 MorseWavelet: list of np.ndarray  
@@ -315,13 +330,6 @@ class Morlet(WaveletBase):
     sfreq: float | Sampling frequency.
         This behaves like sfreq of mne-python.
     sigma: float | sigma value
-    accuracy: float | Accurancy paramater.
-        It does not make sence when you use fft only.
-        Because, Morse Wavelet needs Inverse Fourier Transform,
-        length of wavelet changes but it is tiring to detect. :(
-        If you use ifft, low frequency causes bad wave.
-        Please check wave by Morse.plot(freq) before use it.
-        If wave is bad, large accuracy can help you.(But needs cpu power)
     length: float | Length of wavelet.
         It does not make sence when you use fft only.
         Too long wavelet causes slow calculation.
@@ -334,10 +342,10 @@ class Morlet(WaveletBase):
     '''
 
     def __init__(self, sfreq: float = 1000, sigma: float = 7.,
-                 accuracy: float = 1., real_wave_length: float = 1.,
+                 real_wave_length: float = 1.,
                  gabor: bool = False, interpolate: bool = False,
                  cuda: bool = False) -> None:
-        super(Morlet, self).__init__(sfreq, accuracy, real_wave_length,
+        super(Morlet, self).__init__(sfreq, real_wave_length,
                                      interpolate, cuda)
         self.mode = WaveletMode.Both
         self.sigma = sigma
