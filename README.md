@@ -282,9 +282,9 @@ After inherit this, you can edit these methods.
 - BaseWavelet.trans_formula
 - BaseWavelet.peak_freq
 
-At first, you need to overwrite them.
-They needs to written by numpy.
-These methods are used in the class,
+At first, you need to overwrite them.  
+They needs to written by numpy.  
+These methods are used in the class,  
 and bothering procedures are done.
 
 ## Way to inherit
@@ -385,12 +385,14 @@ Operator
 is slower than 'np.float_power'.  
 And 'np.float_power' is slower than 'np.exp'.  
 These are critical for speed.  
-There is no method named 'cp.float_power' in cupy.
-And so, I divided method for cupy.
-Name is 'cp_trans_formula'. Please write code for cupy in the method.
-  
+
 Optionally, you can write code for cupy.  
 cupy is faster only when data is big.  
+There is no method named 'cp.float_power' in cupy.  
+And so, I divided method for cupy.  
+Name is 'cp_trans_formula'.   
+Please write code for cupy in the method.  
+  
 
 I performed benchmark test by my NotePC  
 'Dell G3 15-3579r' with Intel corei7(4.1Ghz 6core) and Geforce 1050.  
