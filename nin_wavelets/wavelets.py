@@ -126,22 +126,20 @@ class Morlet(WaveletBase):
         self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
 
     def cp_trans_formula(self, freqs: cp.ndarray,
-                                 freq: float = 1.) -> cp.ndarray:
+                         freq: float = 1.) -> cp.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
         result = (self.c * cp.pi ** (-1/4) *
                   (cp.exp(-cp.square(self.sigma-freqs) / 2) -
                    self.k * cp.exp(-cp.square(freqs) / 2)))
         return result
 
-    def trans_formula(self, freqs: np.ndarray,
-                              freq: float = 1) -> np.ndarray:
+    def trans_formula(self, freqs: np.ndarray, freq: float = 1) -> np.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
         return (self.c * np.float_power(np.pi, (-1/4)) *
                 (np.exp(-np.square(self.sigma-freqs) / 2) -
                  self.k * np.exp(-np.square(freqs) / 2)))
 
-    def formula(self, timeline: np.ndarray,
-                        freq: float = 1) -> np.ndarray:
+    def formula(self, timeline: np.ndarray, freq: float = 1) -> np.ndarray:
         return (self.c * np.float_power(np.pi, (-1 / 4))
                 * np.exp(-np.square(timeline) / 2)
                 * (np.exp(self.sigma * 1j * timeline) - self.k))
@@ -197,6 +195,77 @@ MorletWavelet by IFFT.'''
                        mode=mode, decim=decim).mean(axis=0)
 
 
+class MexicanHat(WaveletBase):
+    '''
+    Generator of MexicanHat Wavelets.
+
+    Parameters
+    ----------
+    sfreq: float | Sampling frequency.
+        This behaves like sfreq of mne-python.
+    sigma: float | sigma value
+    length: float | Length of wavelet.
+
+    Returns
+    -------
+    As constructor, MexicanHat instance its self.
+    '''
+
+    def __init__(self, sfreq: float = 1000, sigma: float = 7,
+                 real_wave_length: float = 1.,
+                 interpolate: bool = False, cuda: bool = False) -> None:
+        super(MexicanHat, self).__init__(sfreq, real_wave_length,
+                                         interpolate, cuda)
+        self.sigma: float = sigma
+        self.mode = WaveletMode.Normal
+        self.help = ''
+
+    def formula(self, tc: np.ndarray, freq: float = 1) -> np.ndarray:
+        return ((1 - np.power(tc / self.sigma, 2))
+                * np.exp(-np.square(tc) / np.square(self.sigma) / 2))
+
+    def cp_formula(self, tc: np.ndarray, freq: float = 1) -> np.ndarray:
+        return ((1 - cp.power(tc / self.sigma, 2))
+                * cp.exp(-cp.square(tc) / cp.square(self.sigma) / 2))
+
+    def peak_freq(self, freq: float) -> float:
+        return np.sqrt(6) / np.pi / np.pi
+
+
+class Shannon(WaveletBase):
+    '''
+    Generator of MexicanHat Wavelets.
+
+    Parameters
+    ----------
+    sfreq: float | Sampling frequency.
+        This behaves like sfreq of mne-python.
+    sigma: float | sigma value
+    length: float | Length of wavelet.
+
+    Returns
+    -------
+    As constructor, MexicanHat instance its self.
+    '''
+
+    def __init__(self, sfreq: float = 1000, sigma: float = 7,
+                 real_wave_length: float = 1.,
+                 interpolate: bool = False, cuda: bool = False) -> None:
+        super(Shannon, self).__init__(sfreq, real_wave_length,
+                                      interpolate, cuda)
+        self.sigma: float = sigma
+        self.mode = WaveletMode.Reverse
+        self.help = ''
+
+    def trans_formula(self, tc: np.ndarray, freq: float = 1) -> np.ndarray:
+        for key, value in enumerate(tc):
+            if value <= 1.:
+                tc[key] = 1.
+            else:
+                tc[key] = 0
+        return tc
+
+
 class Haar(WaveletBase):
     def __init__(self, sfreq: float = 1000,
                  real_wave_length: float = 1.,
@@ -204,8 +273,7 @@ class Haar(WaveletBase):
         super(Haar, self).__init__(sfreq, real_wave_length, interpolate)
         self.mode = WaveletMode.Normal
 
-    def formula(self, timeline: np.ndarray,
-                        freq: float = 1) -> np.ndarray:
+    def formula(self, timeline: np.ndarray, freq: float = 1) -> np.ndarray:
         for key, value in enumerate(timeline):
             if (0. < value) and (value <= 1.):
                 timeline[key] = 1.

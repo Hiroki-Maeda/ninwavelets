@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft
 from mne.time_frequency import morlet
 from nin_wavelets.base import interpolate_alias
-from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf
+from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf, MexicanHat, Shannon
 from mne.io import Raw
 import gc
 from sys import argv
@@ -117,6 +117,21 @@ def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
     plt.show()
 
 
+def other_wavelet_test() -> None:
+    hz = 10
+    s = 7
+    mexcan = MexicanHat().make_wavelet(hz)
+    shannon = Shannon().make_wavelet(hz)
+    morlet = Morlet(sigma=s).make_wavelet(hz)
+    plt.plot(mexcan)
+    plt.plot(shannon)
+    plt.plot(morlet)
+    plt.show()
+    plt.plot(np.abs(fft(shannon)))
+    plt.plot(np.abs(fft(morlet)))
+    plt.show()
+
+
 def fft_wavelet_test() -> None:
     hz = 10.
     r = 3
@@ -138,7 +153,7 @@ def fft_wavelet_test() -> None:
     ax.plot(b.imag, label='Morlet wavelet')
     ax.plot(np.abs(c.real), label='FFTed Morlet wavelet')
     ax.plot(c.imag, label='imag of FFTed Morlet wavelet')
-    ax.plot(normal_morlet.make_wavelet(hz), label='MorseWavelet Normal Mode')
+    ax.plot(normal_morlet.make_wavelet(hz), label='Morlet Wavelet Normal Mode')
     handler, label = ax.get_legend_handles_labels()
     ax.legend(label, loc='upper right')
     plt.show()
@@ -172,6 +187,7 @@ if __name__ == '__main__':
         simple_plot_test()
         test3d()
         fft_wavelet_test()
+        other_wavelet_test()
     if 'cwt' in argv:
         cwt_test(False, True) if 'cuda' in argv else cwt_test(False, False)
         eeg()
