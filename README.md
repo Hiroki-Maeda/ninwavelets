@@ -155,14 +155,22 @@ interpolate=True makes your code faster.
 But, I dont know whether it is good or bad...  
 
 This is an example.  
-List of wavelet classes is this.
+List of wavelet classes is this.  
+All of them are in module 'nin_wavelets.wavelets' and
+you can use it by this code.
 
-| Name              | Name in this package             |
-|-------------------|----------------------------------|
-| Generalized Morse | Morse                            |
-| Complex Morlet    | Morlet                           |
-| Complex Shannon   | Shannon                          |
-| Gausian(Gabor)    | Morlet(gabor option is available |
+```python
+from nin_wavelets import hoge
+```
+
+| Name              | Name in this package              |
+|-------------------|-----------------------------------|
+| Generalized Morse | Morse                             |
+| Complex Morlet    | Morlet                            |
+| Complex Shannon   | Shannon                           |
+| Gausian(Gabor)    | Morlet(gabor option is available) |
+| MexicanHat        | MexicanHat                        |
+| Haar              | Haar(This is not good!)           |
 
 ### make_wavelets
 
@@ -465,7 +473,8 @@ Mit licence requires my name... I am confused.
     + [x] Morse
     + [x] Morlet
     + [x] Gabor
-    + [ ] Mexican hat
+    + [x] Mexican hat
+    + [x] Shannon
     + [x] Haar
     + [ ] Scalability for unknown wavelets
 - More methods
