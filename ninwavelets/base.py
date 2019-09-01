@@ -9,7 +9,39 @@ from functools import partial
 
 
 Numbers = Union[List[float], np.ndarray, range]
+Array = Union[np.ndarray, cp.ndarray]
 MNE_CONSTANT = np.sqrt(2)
+
+
+def baseline_of(wave: Array, sfreq: float,
+                start: float, stop: float) -> Array:
+    return wave[int(start * sfreq): int(stop * sfreq)]
+
+
+class Baseline:
+    def __init__(self, wave: Array, sfreq: float,
+                 start: float, stop: float) -> None:
+        self.wave = wave
+        self.baseline = wave[int(start * sfreq): int(stop * sfreq)]
+        self.basemean = self.baseline.mean()
+
+    def mean(self) -> Array:
+        return self.wave - self.basemean
+
+    def ratio(self) -> Array:
+        return self.wave / self.basemean
+
+    def percent(self) -> Array:
+        return self.mean() / self.basemean
+
+    def log(self) -> Array:
+        return np.log10(self.ratio())
+
+    def zscore(self) -> Array:
+        return self.mean() / np.std(self.baseline)
+
+    def zlog(self) -> Array:
+        return self.log() / np.std(self.baseline)
 
 
 class SizeError(BaseException):
@@ -93,6 +125,7 @@ class WaveletBase:
     self._make_fft_wavelet : returns np.ndarray
     self.make_wavelet : returns np.ndarray
     '''
+
     def __init__(self, sfreq: float = 1000, real_wave_length: float = 1.,
                  interpolate: bool = True, cuda: bool = False) -> None:
         '''
