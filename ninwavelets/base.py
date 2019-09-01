@@ -19,6 +19,28 @@ def baseline_of(wave: Array, sfreq: float,
 
 
 class Baseline:
+    '''Baseline
+    Class for baseline correction.
+
+    wave: Union[np.ndarray, cp.nparray]
+        Wave you want to process.
+        It needs to be single wave.
+    sfreq: float
+        sfreq
+    start: float
+        Start time of baseline
+    stop: float
+        Stop time of baseline
+
+    There are these methods.
+
+    - mean: subtraction
+    - ratio: division
+    - percent: division after subtraction
+    - log: log10 after division
+    - zscore: standize after subtraction
+    - zlog: log10 after zscore
+    '''
     def __init__(self, wave: Array, sfreq: float,
                  start: float, stop: float) -> None:
         self.wave = wave
