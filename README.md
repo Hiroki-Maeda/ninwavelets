@@ -68,6 +68,8 @@ GMW is similar to morlet wavelet, if you use default param.
 You can calculate power.
 
 ```python
+from ninwavelets import Morse
+
 morse = Morse(1000, gamma=3, beta=17.5)
 freq = 60
 time = np.arange(0, 0.3, 0.001)
@@ -86,6 +88,13 @@ You can also calculate power.
 
 ```python
 result = morse.power(sin, range(1, 100))
+```
+
+You can perform baseline correction.
+```python
+from ninwavelets import Baseline
+
+wave = Baseline(wave, 1000, 0, 0.2).zscore()
 ```
 
 You can also use plot_tf().
@@ -253,6 +262,39 @@ I think, this ugly class is disgusting.
 By the way, there is a formula of Morlet wavelet which is Fourier transformed.  
 And so, I think, it may be better to use the formula  
 even if you use Morlet Wavelet.  
+
+## Baseline Class
+
+NinWavelets supports baseline correction.
+
+```python
+def __init__(self, wave: Array, sfreq: float,
+             start: float, stop: float) -> None:
+```
+
+You need to import Baseline.
+In this case, wave was read as 'wave'.
+
+```python
+from ninwavelets import Baseline
+
+baseline = Baseline(wave, 1000, 0, 0.2)
+wave = baseline.zscore()
+```
+
+In this case, 1000 is sampling frequency.
+0 ~ 0.2 second is range for baseline correction.
+
+There are these methods.
+
+- mean: subtraction
+- ratio: division
+- percent: division after subtraction
+- log: log10 after division
+- zscore: standize after subtraction
+- zlog: log10 after zscore
+
+
 
 ## NinWavelets for MNE
 
