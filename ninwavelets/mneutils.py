@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Type, NewType
-from nin_wavelets.base import WaveletBase, Numbers
+from ninwavelets.base import WaveletBase, Numbers
 
 
 Epochs = NewType('Epochs', object)

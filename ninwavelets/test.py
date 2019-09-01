@@ -5,8 +5,8 @@ from multiprocessing import Pool
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft
 from mne.time_frequency import morlet
-from nin_wavelets.base import interpolate_alias
-from nin_wavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf, MexicanHat, Shannon
+from ninwavelets.base import interpolate_alias
+from ninwavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf, MexicanHat, Shannon
 from mne.io import Raw
 import gc
 from sys import argv
