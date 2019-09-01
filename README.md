@@ -29,7 +29,7 @@ See Advantages and Limitations.
 # Install
 
 ```
-pip install git+https://github.com/uesseu/nin_wavelets
+pip install git+https://github.com/uesseu/ninwavelets
 ```
 
 # Dependency
@@ -92,7 +92,7 @@ You can also use plot_tf().
 It can plot result with colorbar.
 
 ```python
-from nin_wavelets import plot_tf
+from ninwavelets import plot_tf
 plot_tf(result)
 ```
 
@@ -118,7 +118,7 @@ This is a class to GMW.
 Sub class of WaveletBase.
 
 ```python
-from nin_wavelets import Morse
+from ninwavelets import Morse
 ```
 
 ```python
@@ -256,10 +256,10 @@ even if you use Morlet Wavelet.
 
 ## NinWavelets for MNE
 
-nin_wavelets.EpochsWavelet is a class for Epochs class of mne.
+ninwavelets.EpochsWavelet is a class for Epochs class of mne.
 
 '''python
-from nin_wavelets import EpochsWavelet, Morse, plot_tf
+from ninwavelets import EpochsWavelet, Morse, plot_tf
 from mne import read_epochs
 
 fname = 'hoge_epo.fif'
@@ -293,7 +293,7 @@ and bothering procedures are done.
 
 This is an example.
 This code is sub class of BaseWavelet, and is
-nin_wavelets.MorletWavelet.
+ninwavelets.MorletWavelet.
 
 ```python
 class Morlet(WaveletBase):
