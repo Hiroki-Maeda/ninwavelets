@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft
 from mne.time_frequency import morlet
 from ninwavelets.base import interpolate_alias
-from ninwavelets import Morse, MorseMNE, Morlet, WaveletMode, Haar, plot_tf, MexicanHat, Shannon
+from ninwavelets import (Morse, MorseMNE, Morlet, WaveletMode,
+                         Haar, plot_tf, MexicanHat, Shannon, Baseline)
 from mne.io import Raw
 import gc
 from sys import argv
@@ -101,7 +102,7 @@ def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
     nin_morlet = Morlet(interpolate=interpolate, cuda=cuda, sfreq=500)
     nin_morlet.mode = WaveletMode.Both
 
-    result_morse = morse.power(sin, range(1000))
+    result_morse = morse.power(sin, range(1, 1000))
     result_morlet = nin_morlet.power(sin, np.arange(1., 1000, 1))
 
     vmax = 0.03
@@ -169,6 +170,7 @@ def eeg() -> None:
     raw = Raw('/home/ninja/ninja.fif')
     data = raw.get_data()[raw.ch_names.index('EEG O1-Ref')]
     d = data[150*500: 190*500]
+    d = Baseline(d, 1000, 0, 1).zscore()
     tf = Morse(raw.info['sfreq'], cuda=True).power(d, np.arange(0.1, 50, 0.1))
     ax = plot_tf(tf, frange=(0, 50, 10), trange=(0, 40, 10), sfreq=500,
                  show=False)
