@@ -51,7 +51,7 @@ But, you can use it in the same way as'
 MorletWavelet by IFFT.'''
 
     def cp_trans_formula(self, freqs: cp.ndarray,
-                                 freq: float = 1.) -> cp.ndarray:
+                         freq: float = 1.) -> cp.ndarray:
         np_freqs = cp.asnumpy(freqs)
         step = cp.asarray(np.heaviside(np_freqs, np_freqs))
         freqs = cp.asarray(freqs) / freq
@@ -59,21 +59,18 @@ MorletWavelet by IFFT.'''
                      cp.exp((self.b / self.r) *
                             (1.
                              - freqs ** self.r)
-                            )) / cp.pi
+                            ))
         return wave
 
-    def trans_formula(self, freqs: np.ndarray,
-                              freq: float = 1.) -> np.ndarray:
+    def trans_formula(self, freqs: np.ndarray, freq: float = 1.) -> np.ndarray:
         '''
         Make Fourier transformed morse wavelet.
         '''
         freqs = freqs / freq
         step = np.heaviside(freqs, freqs)
-        wave = 2. * (step * np.float_power(freqs, self.b) *
-                     np.exp((self.b / self.r) *
-                            (1.
-                             - np.float_power(freqs, self.r))
-                            )) / np.pi
+        wave = 2. * (step * np.float_power(freqs, self.b)
+                     * np.exp((self.b / self.r)
+                              * (1. - np.float_power(freqs, self.r))))
         return wave
 
 
@@ -118,10 +115,9 @@ class Morlet(WaveletBase):
                                      interpolate, cuda)
         self.mode = WaveletMode.Both
         self.sigma = sigma
-        self.c = np.float_power(1 +
-                                np.exp(-np.float_power(self.sigma, 2) / 2)
-                                - 2 * np.exp(-3 / 4
-                                             * np.float_power(self.sigma, 2)),
+        self.c = np.float_power(1
+                                + np.exp(-np.square(self.sigma))
+                                - 2 * np.exp(-3 / 4 * np.square(self.sigma)),
                                 -1/2)
         self.k = 0 if gabor else np.exp(-np.float_power(self.sigma, 2) / 2)
 
@@ -135,9 +131,9 @@ class Morlet(WaveletBase):
 
     def trans_formula(self, freqs: np.ndarray, freq: float = 1) -> np.ndarray:
         freqs = freqs / freq * self.peak_freq(freq)
-        return (self.c * np.float_power(np.pi, (-1/4)) *
-                (np.exp(-np.square(self.sigma-freqs) / 2) -
-                 self.k * np.exp(-np.square(freqs) / 2)))
+        return (self.c * np.float_power(np.pi, -1/4)
+                * (np.exp(-np.square(self.sigma-freqs) / 2)
+                   - self.k * np.exp(-np.square(freqs) / 2)))
 
     def formula(self, timeline: np.ndarray, freq: float = 1) -> np.ndarray:
         return (self.c * np.float_power(np.pi, (-1 / 4))
