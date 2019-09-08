@@ -1,10 +1,11 @@
 import numpy as np
+import cupy as cp
 from mpl_toolkits.mplot3d import Axes3D
 from typing import Any
 from multiprocessing import Pool
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft
-from mne.time_frequency import morlet
+from mne.time_frequency.tfr import morlet, cwt
 from ninwavelets.base import interpolate_alias
 from ninwavelets import (Morse, MorseMNE, Morlet, WaveletMode,
                          Haar, plot_tf, MexicanHat, Shannon, Baseline)
@@ -39,13 +40,15 @@ def test() -> None:
 
 
 def test3d() -> None:
-    go = morlet(1000, [10])[0]
-    mm = morlet(1000, [10], zero_mean=True)[0]
-    morse_obj = Morse(1000, 17.5, 3)
-    morse = morse_obj.make_wavelet(10)
-    nm = Morlet(1000)
+    sfreq = 1000
+    hz = 20
+    go = morlet(sfreq, [hz])[0]
+    mm = morlet(sfreq, [hz], zero_mean=True)[0]
+    morse_obj = Morse(sfreq, 17.5, 3)
+    morse = morse_obj.make_wavelet(hz)
+    nm = Morlet(sfreq)
 #    nm.mode = WaveletMode.Normal
-    nin_morlet = nm.make_wavelet(10)
+    nin_morlet = nm.make_wavelet(hz)
 
     half_morse = morse.shape[0] / 2
     morse_time = np.arange(-half_morse, half_morse, 1)
@@ -53,6 +56,9 @@ def test3d() -> None:
     morlet_time = np.arange(-half_mm, half_mm, 1)
     fig = plt.figure()
     ax = fig.add_subplot(211)
+    print(np.linalg.norm(morse))
+    print(np.linalg.norm(mm))
+    print(np.linalg.norm(nin_morlet))
 
     ax.plot(morse_time, morse, label='Morse Wavelet')
     ax.plot(morse_time, nin_morlet, label='Morlet Wavelet')
@@ -76,46 +82,45 @@ def plot_sin_fft() -> None:
     freq = 60
     time = np.arange(0, 0.3, 0.001)
     sin = np.array(np.sin(time * freq * 2 * np.pi))
-    sin = np.hstack((sin, np.zeros(100)))
+    time2 = np.arange(0, 0.6, 0.001)
+    sin2 = np.array(np.sin(time2 * freq * 2 * np.pi))
     plt.plot(sin)
+    plt.plot(sin2)
     plt.show()
     plt.plot(np.abs(fft(sin)))
+    plt.plot(np.abs(fft(sin2)))
     plt.show()
-    plt.plot(ifft(fft(sin)))
-    plt.plot(ifft(interpolate_alias(fft(sin))))
-    plt.show()
-
-
-def simple_plot_test() -> None:
-    morse = Morse()
-    morse.plot(10)
 
 
 def cwt_test(interpolate: bool = True, cuda: bool = False) -> None:
-    sin = make_example(10)
-    ax1 = plt.subplot(2, 1, 1)
-    ax2 = plt.subplot(2, 1, 2)
-    ax1.invert_yaxis()
-    ax2.invert_yaxis()
+    sin = make_example(1)
+    ax1 = plt.subplot(3, 1, 1)
+    ax2 = plt.subplot(3, 1, 2)
+    ax3 = plt.subplot(3, 1, 3)
 
     morse = Morse(interpolate=interpolate, cuda=cuda)
-    nin_morlet = Morlet(interpolate=interpolate, cuda=cuda, sfreq=500)
+    nin_morlet = Morlet(interpolate=interpolate, cuda=cuda, sfreq=1000)
     nin_morlet.mode = WaveletMode.Both
 
-    result_morse = morse.power(sin, range(1, 1000))
-    result_morlet = nin_morlet.power(sin, np.arange(1., 1000, 1))
-
-    vmax = 0.03
+    result_morse = morse.abs(sin, range(1, 1000))
+    result_morlet = nin_morlet.abs(sin, np.arange(1., 1000, 1))
+    # result_mne = cwt(np.array([sin]), morlet(1000, range(1, 1000)))[0]
+    result_mne = cwt(np.array([sin]),
+                     morse.make_wavelets(range(1, 1000)))[0]
+    vmax = 1
     ax1.imshow(np.abs(result_morse), cmap='RdBu_r', vmax=vmax)
     ax2.imshow(np.abs(result_morlet), cmap='RdBu_r', vmax=vmax)
+    ax3.imshow(np.abs(result_mne), cmap='RdBu_r', vmax=vmax)
     ax1.invert_yaxis()
     ax2.invert_yaxis()
+    ax3.invert_yaxis()
     ax1.set_title('Morse')
     ax2.set_title('Morlet')
+    ax3.set_title('MNE')
     plt.show()
-    result_morse = morse.power(sin, reuse=True)
-    plot_tf(result_morse)
-    plt.show()
+    # result_morse = morse.power(sin, reuse=True)
+    # plot_tf(result_morse)
+    # plt.show()
 
 
 def other_wavelet_test() -> None:
@@ -139,20 +144,22 @@ def fft_wavelet_test() -> None:
     b = 17.5
     s = 7
     morse = Morse(r=r, b=b)
-    morlet = Morlet(sigma=s, sfreq=1000)
+    nin_morlet = Morlet(sigma=s, sfreq=1000)
     normal_morlet = Morlet(sigma=s, sfreq=1000)
     normal_morlet.mode = WaveletMode.Normal
     fig = plt.figure()
     w = morse.make_wavelet(hz)
     a = morse.make_fft_wavelet(hz)
-    b = morlet.make_wavelet(hz)
-    c = morlet.make_fft_wavelet(hz)
+    b = nin_morlet.make_wavelet(hz)
+    c = nin_morlet.make_fft_wavelet(hz)
+    d = morlet(1000, [hz])[0]
     ax = fig.add_subplot(1, 1, 1)
     ax.plot(w, label='Generalized Morse wavelet')
     ax.plot(a, label='FFTed Generalized Morse wavelet')
     ax.plot(b, label='Morlet wavelet')
     ax.plot(b.imag, label='Morlet wavelet')
     ax.plot(np.abs(c.real), label='FFTed Morlet wavelet')
+    ax.plot(np.abs(fft(d)), label='MNE morlet')
     ax.plot(c.imag, label='imag of FFTed Morlet wavelet')
     ax.plot(normal_morlet.make_wavelet(hz), label='Morlet Wavelet Normal Mode')
     handler, label = ax.get_legend_handles_labels()
@@ -160,7 +167,7 @@ def fft_wavelet_test() -> None:
     plt.show()
 
 
-def eeg() -> None:
+def eeg(cuda: bool) -> None:
     '''
     This test code reads my eeg.
     I am not sure whether I can open my eeg.
@@ -181,15 +188,18 @@ def eeg() -> None:
 
 
 if __name__ == '__main__':
-    # enable_cupy()
     print('Test Run')
     # plot_sin_fft()
     # test()
+    cuda = True if 'cuda' in argv else False
+    interpolate = True if 'interpolate' in argv else False
+    if 'sin' in argv:
+        plot_sin_fft()
     if 'wave' in argv:
-        simple_plot_test()
         test3d()
         fft_wavelet_test()
         other_wavelet_test()
     if 'cwt' in argv:
-        cwt_test(False, True) if 'cuda' in argv else cwt_test(False, False)
-        eeg()
+        cwt_test(interpolate, cuda)
+    if 'eeg' in argv:
+        eeg(cuda)

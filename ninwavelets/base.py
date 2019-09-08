@@ -2,7 +2,7 @@ import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
 from scipy.fftpack import ifft, fft
-from typing import Union, List, Iterator, Callable
+from typing import Union, List, Iterator, Callable, Tuple
 from enum import Enum
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from functools import partial
@@ -10,6 +10,8 @@ from functools import partial
 
 Numbers = Union[List[float], np.ndarray, range]
 Array = Union[np.ndarray, cp.ndarray]
+Float = Union[None, float]
+Floats = Union[None, Tuple[float, float]]
 MNE_CONSTANT = np.sqrt(2)
 
 
@@ -243,7 +245,7 @@ class WaveletBase:
                                             real_length, self.cuda)
                 result = formula(t, freq)
             result = cp.asnumpy(result) if self.cuda else result
-            return normalize(result, self.sfreq/1000)
+            return result
         else:
             wavelet = self.make_wavelet(freq)
             half = int((self.sfreq * self.real_wave_length
@@ -251,7 +253,7 @@ class WaveletBase:
             wavelet = np.hstack((np.zeros(half), wavelet, np.zeros(half)))
             result = fft(wavelet)
             result.imag, result.real = np.abs(result.imag), np.abs(result.real)
-            return normalize(result, self.sfreq / 1000)
+            return result
 
     def make_fft_wavelets(self, freqs: Numbers,
                           real_wave_length: float = 1.) -> List[np.ndarray]:
@@ -354,7 +356,7 @@ class WaveletBase:
         else:
             timeline = self._setup_waveletshape(freq, 1, zero_mean=True)
             wavelet = self.formula(timeline, freq)
-        return normalize(wavelet, self.sfreq / 1000) * MNE_CONSTANT
+        return wavelet
 
     def make_wavelets(self,  freqs: Numbers) -> np.ndarray:
         '''
@@ -398,7 +400,6 @@ class WaveletBase:
         if self.interpolate:
             fft_wave = interpolate_alias(fft_wave, cuda=self.cuda)
         # Keep powerful even if long wave.
-        fft_wave *= wave.shape[0] / self.sfreq
         if self.cuda:
             result = cp.asnumpy(cp.fft.ifft(wavelet * fft_wave))
         else:
@@ -488,11 +489,9 @@ def plot_wavelet(wavelet_obj: WaveletBase, freq: float,
     return fig
 
 
-def plot_tf(data: np.ndarray,
-            sfreq: float = 1000,
-            frange: Union[None, tuple] = None,
-            trange: Union[None, tuple] = None,
-            vmin: Union[float, None] = None, vmax: Union[float, None] = None,
+def plot_tf(data: np.ndarray, sfreq: float = 1000, frange: Floats = None,
+            trange: Floats = None, vmin: Float = None,
+            vmax: Union[float, None] = None,
             cmap: str = 'RdBu_r', show: bool = True) -> plt.Axes:
     '''
     Plot by matplotlib.
